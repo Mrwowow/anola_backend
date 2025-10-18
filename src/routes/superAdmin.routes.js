@@ -12,59 +12,90 @@ router.use(isSuperAdmin);
 
 /**
  * @swagger
- * /api/v1/super-admin/dashboard:
+ * /api/super-admin/dashboard:
  *   get:
  *     summary: Get platform dashboard and analytics
  *     tags: [SuperAdmin]
  *     security:
  *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dashboard statistics retrieved successfully
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions
  */
 router.get('/dashboard', hasPermission('viewAnalytics'), superAdminController.getDashboard);
 
 /**
  * @swagger
- * /api/v1/super-admin/statistics:
+ * /api/super-admin/statistics:
  *   get:
  *     summary: Get platform statistics with trends
  *     tags: [SuperAdmin]
  *     security:
  *       - bearerAuth: []
- */
+ *     responses:
+ *       200:
+ *         description: Operation successful
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions */
 router.get('/statistics', hasPermission('viewAnalytics'), superAdminController.getStatistics);
 
 // ==================== User Management ====================
 
 /**
  * @swagger
- * /api/v1/super-admin/users:
+ * /api/super-admin/users:
  *   get:
  *     summary: Get all users with filters
  *     tags: [SuperAdmin]
  *     security:
  *       - bearerAuth: []
- */
+ *     responses:
+ *       200:
+ *         description: Operation successful
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions */
 router.get('/users', hasPermission('manageUsers'), superAdminController.getAllUsers);
 
 /**
  * @swagger
- * /api/v1/super-admin/users/:id:
+ * /api/super-admin/users/:id:
  *   get:
  *     summary: Get user by ID
  *     tags: [SuperAdmin]
  *     security:
  *       - bearerAuth: []
- */
+ *     responses:
+ *       200:
+ *         description: Operation successful
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions */
 router.get('/users/:id', hasPermission('manageUsers'), superAdminController.getUserById);
 
 /**
  * @swagger
- * /api/v1/super-admin/users/:id/status:
+ * /api/super-admin/users/:id/status:
  *   patch:
  *     summary: Update user status
  *     tags: [SuperAdmin]
  *     security:
  *       - bearerAuth: []
- */
+ *     responses:
+ *       200:
+ *         description: Operation successful
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions */
 router.patch(
   '/users/:id/status',
   hasPermission('manageUsers'),
@@ -74,13 +105,19 @@ router.patch(
 
 /**
  * @swagger
- * /api/v1/super-admin/users/:id/verify:
+ * /api/super-admin/users/:id/verify:
  *   post:
  *     summary: Verify user identity
  *     tags: [SuperAdmin]
  *     security:
  *       - bearerAuth: []
- */
+ *     responses:
+ *       200:
+ *         description: Operation successful
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions */
 router.post(
   '/users/:id/verify',
   hasPermission('manageUsers'),
@@ -90,13 +127,19 @@ router.post(
 
 /**
  * @swagger
- * /api/v1/super-admin/users/:id:
+ * /api/super-admin/users/:id:
  *   delete:
  *     summary: Permanently delete user (Master Admin only)
  *     tags: [SuperAdmin]
  *     security:
  *       - bearerAuth: []
- */
+ *     responses:
+ *       200:
+ *         description: Operation successful
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions */
 router.delete(
   '/users/:id',
   isMasterAdmin,
@@ -109,24 +152,36 @@ router.delete(
 
 /**
  * @swagger
- * /api/v1/super-admin/providers:
+ * /api/super-admin/providers:
  *   get:
  *     summary: Get all providers
  *     tags: [SuperAdmin]
  *     security:
  *       - bearerAuth: []
- */
+ *     responses:
+ *       200:
+ *         description: Operation successful
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions */
 router.get('/providers', hasPermission('manageProviders'), superAdminController.getAllProviders);
 
 /**
  * @swagger
- * /api/v1/super-admin/providers/:id/verify:
+ * /api/super-admin/providers/:id/verify:
  *   post:
  *     summary: Verify provider credentials
  *     tags: [SuperAdmin]
  *     security:
  *       - bearerAuth: []
- */
+ *     responses:
+ *       200:
+ *         description: Operation successful
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions */
 router.post(
   '/providers/:id/verify',
   hasPermission('manageProviders'),
@@ -138,24 +193,36 @@ router.post(
 
 /**
  * @swagger
- * /api/v1/super-admin/transactions:
+ * /api/super-admin/transactions:
  *   get:
  *     summary: Get all transactions
  *     tags: [SuperAdmin]
  *     security:
  *       - bearerAuth: []
- */
+ *     responses:
+ *       200:
+ *         description: Operation successful
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions */
 router.get('/transactions', hasPermission('manageTransactions'), superAdminController.getAllTransactions);
 
 /**
  * @swagger
- * /api/v1/super-admin/transactions/:id/reverse:
+ * /api/super-admin/transactions/:id/reverse:
  *   post:
  *     summary: Reverse a transaction
  *     tags: [SuperAdmin]
  *     security:
  *       - bearerAuth: []
- */
+ *     responses:
+ *       200:
+ *         description: Operation successful
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions */
 router.post(
   '/transactions/:id/reverse',
   hasPermission('manageTransactions'),
@@ -167,50 +234,74 @@ router.post(
 
 /**
  * @swagger
- * /api/v1/super-admin/sponsorships:
+ * /api/super-admin/sponsorships:
  *   get:
  *     summary: Get all sponsorships
  *     tags: [SuperAdmin]
  *     security:
  *       - bearerAuth: []
- */
+ *     responses:
+ *       200:
+ *         description: Operation successful
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions */
 router.get('/sponsorships', hasPermission('manageSponsorships'), superAdminController.getAllSponsorships);
 
 // ==================== Audit & Logs ====================
 
 /**
  * @swagger
- * /api/v1/super-admin/audit-logs:
+ * /api/super-admin/audit-logs:
  *   get:
  *     summary: Get audit logs
  *     tags: [SuperAdmin]
  *     security:
  *       - bearerAuth: []
- */
+ *     responses:
+ *       200:
+ *         description: Operation successful
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions */
 router.get('/audit-logs', hasPermission('auditLogs'), superAdminController.getAuditLogs);
 
 // ==================== Admin Management (Master Admin Only) ====================
 
 /**
  * @swagger
- * /api/v1/super-admin/admins:
+ * /api/super-admin/admins:
  *   get:
  *     summary: Get all super admins (Master Admin only)
  *     tags: [SuperAdmin]
  *     security:
  *       - bearerAuth: []
- */
+ *     responses:
+ *       200:
+ *         description: Operation successful
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions */
 router.get('/admins', isMasterAdmin, hasPermission('createAdmins'), superAdminController.getAllSuperAdmins);
 
 /**
  * @swagger
- * /api/v1/super-admin/admins:
+ * /api/super-admin/admins:
  *   post:
  *     summary: Create new super admin (Master Admin only)
  *     tags: [SuperAdmin]
  *     security:
  *       - bearerAuth: []
- */
+ *     responses:
+ *       200:
+ *         description: Operation successful
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions */
 router.post(
   '/admins',
   isMasterAdmin,
@@ -221,13 +312,19 @@ router.post(
 
 /**
  * @swagger
- * /api/v1/super-admin/admins/:id/permissions:
+ * /api/super-admin/admins/:id/permissions:
  *   patch:
  *     summary: Update admin permissions (Master Admin only)
  *     tags: [SuperAdmin]
  *     security:
  *       - bearerAuth: []
- */
+ *     responses:
+ *       200:
+ *         description: Operation successful
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions */
 router.patch(
   '/admins/:id/permissions',
   isMasterAdmin,
