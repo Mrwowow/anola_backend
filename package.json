@@ -10,7 +10,9 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "build": "echo 'No build step required for Node.js'",
-    "create-super-admin": "node scripts/createSuperAdmin.js"
+    "create-super-admin": "node scripts/createSuperAdmin.js",
+    "create-super-admin-quick": "node scripts/createSuperAdminQuick.js",
+    "delete-super-admin": "node scripts/deleteSuperAdmin.js"
   },
   "keywords": [
     "healthcare",

@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const superAdminController = require('../controllers/superAdmin.controller');
-const { protect } = require('../middleware/auth.middleware');
+const { authenticate } = require('../middleware/auth.middleware');
 const { isSuperAdmin, hasPermission, isMasterAdmin, logAction } = require('../middleware/superAdmin.middleware');
 
 // All routes require authentication and super admin access
-router.use(protect);
+router.use(authenticate);
 router.use(isSuperAdmin);
 
 // ==================== Dashboard & Analytics ====================
