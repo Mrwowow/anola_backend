@@ -370,6 +370,24 @@ const options = {
   ]
 };
 
-const specs = swaggerJsdoc(options);
+let specs;
+
+try {
+  specs = swaggerJsdoc(options);
+} catch (error) {
+  console.warn('Swagger initialization warning:', error.message);
+  // Provide a minimal spec if swagger fails to initialize
+  specs = {
+    openapi: '3.0.0',
+    info: {
+      title: 'Anola Health API',
+      version: '1.0.0',
+      description: 'A comprehensive healthcare platform API'
+    },
+    paths: {},
+    components: options.definition.components,
+    tags: options.definition.tags
+  };
+}
 
 module.exports = specs;

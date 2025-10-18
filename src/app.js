@@ -92,26 +92,38 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Swagger API Documentation
-app.use('/api-docs', swaggerUi.serve);
-app.get('/api-docs', swaggerUi.setup(swaggerSpecs, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'Anola Health API Documentation',
-  swaggerOptions: {
-    persistAuthorization: true,
-    displayRequestDuration: true,
-    docExpansion: 'none',
-    filter: true,
-    showExtensions: true,
-    showCommonExtensions: true,
-    tryItOutEnabled: true
-  }
-}));
+// Wrap in try-catch to prevent crashes in serverless environments
+try {
+  app.use('/api-docs', swaggerUi.serve);
+  app.get('/api-docs', swaggerUi.setup(swaggerSpecs, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'Anola Health API Documentation',
+    swaggerOptions: {
+      persistAuthorization: true,
+      displayRequestDuration: true,
+      docExpansion: 'none',
+      filter: true,
+      showExtensions: true,
+      showCommonExtensions: true,
+      tryItOutEnabled: true
+    }
+  }));
 
-// JSON API specification endpoint (fallback for when Swagger UI doesn't load)
-app.get('/api-spec.json', (req, res) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpecs);
-});
+  // JSON API specification endpoint (fallback for when Swagger UI doesn't load)
+  app.get('/api-spec.json', (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(swaggerSpecs);
+  });
+} catch (error) {
+  console.error('Swagger UI setup error:', error.message);
+  // Provide a fallback endpoint
+  app.get('/api-docs', (req, res) => {
+    res.status(200).send('<h1>API Documentation</h1><p>Swagger UI is currently unavailable. Please use <a href="/api-spec.json">/api-spec.json</a> for the OpenAPI specification.</p>');
+  });
+  app.get('/api-spec.json', (req, res) => {
+    res.status(200).json(swaggerSpecs || { openapi: '3.0.0', info: { title: 'Anola Health API', version: '1.0.0' }, paths: {} });
+  });
+}
 
 /**
  * @swagger
