@@ -163,6 +163,24 @@ vercel logs
 ```
 Or view in Vercel Dashboard → Your Project → Logs
 
+## Important Configuration Notes
+
+### Vercel.json Configuration
+The `vercel.json` file uses the modern Vercel configuration:
+- Uses `rewrites` instead of `routes` for cleaner routing
+- Uses `functions` property (NOT `builds`) for serverless function configuration
+- **NOTE:** Do NOT use `builds` and `functions` together - Vercel will throw an error
+
+### Serverless Function Structure
+```
+anola_backend/
+├── api/
+│   └── index.js       # Main serverless entry point
+├── src/
+│   └── app.js         # Express app
+└── vercel.json        # Vercel configuration
+```
+
 ## Troubleshooting
 
 ### Common Issues:
@@ -190,6 +208,13 @@ Or view in Vercel Dashboard → Your Project → Logs
 - Update environment variables for frontend URLs
 - Check CORS configuration in src/app.js
 - Verify headers in vercel.json
+
+#### 6. **"functions property cannot be used with builds property" Error**
+- **Solution:** This error occurs when using both `builds` and `functions` in vercel.json
+- Remove the `builds` property from vercel.json
+- Use only `functions` property for serverless function configuration
+- The correct vercel.json should use `rewrites` for routing
+- If you see this error, your vercel.json has already been fixed in this project
 
 ## Custom Domain Setup
 
