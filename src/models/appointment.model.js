@@ -255,11 +255,11 @@ const appointmentSchema = new mongoose.Schema({
 });
 
 // Indexes
+// Note: appointmentId already has a unique index from field definition
 appointmentSchema.index({ patient: 1, scheduledDate: -1 });
 appointmentSchema.index({ provider: 1, scheduledDate: -1 });
 appointmentSchema.index({ status: 1 });
 appointmentSchema.index({ scheduledDate: 1, 'scheduledTime.startTime': 1 });
-appointmentSchema.index({ appointmentId: 1 });
 
 // Virtual for appointment duration
 appointmentSchema.virtual('totalDuration').get(function() {

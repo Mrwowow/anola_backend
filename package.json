@@ -11,7 +11,13 @@
     "test:coverage": "jest --coverage",
     "build": "echo 'No build step required for Node.js'"
   },
-  "keywords": ["healthcare", "mongodb", "express", "api", "vercel"],
+  "keywords": [
+    "healthcare",
+    "mongodb",
+    "express",
+    "api",
+    "vercel"
+  ],
   "author": "Anola Health",
   "license": "ISC",
   "engines": {
@@ -35,6 +41,8 @@
     "qrcode": "^1.5.4",
     "socket.io": "^4.8.1",
     "stripe": "^19.1.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "twilio": "^5.10.2"
   },
   "devDependencies": {

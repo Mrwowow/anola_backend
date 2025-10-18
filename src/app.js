@@ -4,6 +4,8 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpecs = require('./config/swagger');
 
 const config = require('./config/config');
 const connectDB = require('./config/database');
@@ -85,7 +87,40 @@ if (config.nodeEnv === 'production') {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Health check endpoint
+// Swagger API Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Anola Health API Documentation'
+}));
+
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     tags: [System]
+ *     summary: Health check
+ *     description: Check if the API is running and healthy
+ *     responses:
+ *       200:
+ *         description: API is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: OK
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                 environment:
+ *                   type: string
+ *                   example: development
+ *                 version:
+ *                   type: string
+ *                   example: 1.0.0
+ */
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
@@ -108,7 +143,37 @@ app.use('/api/sponsorships', require('./routes/sponsorship.routes'));
 app.use('/api/wallets', require('./routes/wallet.routes'));
 app.use('/api/transactions', require('./routes/transaction.routes'));
 
-// Welcome endpoint
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     tags: [System]
+ *     summary: API welcome endpoint
+ *     description: Get API information and documentation link
+ *     responses:
+ *       200:
+ *         description: API information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Welcome to Anola Health API
+ *                 version:
+ *                   type: string
+ *                   example: 1.0.0
+ *                 documentation:
+ *                   type: string
+ *                   example: /api-docs
+ *                 status:
+ *                   type: string
+ *                   example: running
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ */
 app.get('/', (req, res) => {
   res.json({
     message: 'Welcome to Anola Health API',

@@ -150,8 +150,8 @@ const walletSchema = new mongoose.Schema({
 });
 
 // Indexes
+// Note: walletId already has a unique index from field definition
 walletSchema.index({ owner: 1, type: 1 });
-walletSchema.index({ walletId: 1 });
 walletSchema.index({ status: 1 });
 walletSchema.index({ 'sponsorship.sponsor': 1 });
 

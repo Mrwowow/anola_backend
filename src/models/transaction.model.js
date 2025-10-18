@@ -148,7 +148,7 @@ const transactionSchema = new mongoose.Schema({
 });
 
 // Indexes
-transactionSchema.index({ transactionId: 1 });
+// Note: transactionId already has a unique index from field definition
 transactionSchema.index({ 'from.wallet': 1, createdAt: -1 });
 transactionSchema.index({ 'to.wallet': 1, createdAt: -1 });
 transactionSchema.index({ status: 1 });

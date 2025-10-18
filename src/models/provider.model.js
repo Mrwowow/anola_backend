@@ -187,7 +187,7 @@ const providerSchema = new mongoose.Schema({
 });
 
 // Indexes
-providerSchema.index({ 'professionalInfo.licenseNumber': 1 });
+// Note: professionalInfo.licenseNumber already has a unique index from field definition
 providerSchema.index({ 'professionalInfo.specializations.name': 1 });
 providerSchema.index({ 'practice.facilities.address.coordinates': '2dsphere' });
 providerSchema.index({ 'ratings.average': -1 });

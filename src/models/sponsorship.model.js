@@ -192,9 +192,9 @@ const sponsorshipSchema = new mongoose.Schema({
 });
 
 // Indexes
+// Note: sponsorshipId already has a unique index from field definition
 sponsorshipSchema.index({ sponsor: 1, status: 1 });
 sponsorshipSchema.index({ beneficiary: 1, status: 1 });
-sponsorshipSchema.index({ sponsorshipId: 1 });
 sponsorshipSchema.index({ 'duration.startDate': 1, 'duration.endDate': 1 });
 sponsorshipSchema.index({ status: 1 });
 

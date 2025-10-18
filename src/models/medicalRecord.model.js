@@ -210,9 +210,9 @@ const medicalRecordSchema = new mongoose.Schema({
 });
 
 // Indexes
+// Note: recordId already has a unique index from field definition
 medicalRecordSchema.index({ patient: 1, createdAt: -1 });
 medicalRecordSchema.index({ provider: 1, createdAt: -1 });
-medicalRecordSchema.index({ recordId: 1 });
 medicalRecordSchema.index({ type: 1 });
 medicalRecordSchema.index({ 'clinical.diagnoses.code': 1 });
 medicalRecordSchema.index({ tags: 1 });

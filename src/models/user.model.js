@@ -214,10 +214,8 @@ const userSchema = new mongoose.Schema({
 });
 
 // Indexes
-userSchema.index({ email: 1 });
-userSchema.index({ phone: 1 });
-userSchema.index({ healthCardId: 1 });
-userSchema.index({ 'profile.nationalId': 1 });
+// Note: email, phone, healthCardId, and profile.nationalId already have unique indexes
+// from their field definitions, so we don't need to create them again here
 userSchema.index({ userType: 1, status: 1 });
 userSchema.index({ 'profile.address.coordinates': '2dsphere' });
 userSchema.index({ createdAt: -1 });

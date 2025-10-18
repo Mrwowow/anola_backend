@@ -118,6 +118,20 @@ CLOUDINARY_API_SECRET=your-api-secret
 
 ## 📚 API Documentation
 
+### Interactive Documentation
+
+**Swagger UI:** http://localhost:3000/api-docs
+
+The API includes comprehensive Swagger/OpenAPI 3.0 documentation with an interactive interface for exploring and testing all endpoints.
+
+Features:
+- Browse all endpoints organized by category
+- Test API calls directly from your browser
+- View detailed request/response schemas
+- Built-in authentication support
+
+For more details, see [SWAGGER_DOCUMENTATION.md](SWAGGER_DOCUMENTATION.md)
+
 ### Authentication Endpoints
 - `POST /api/auth/register` - Register new user
 - `POST /api/auth/login` - User login

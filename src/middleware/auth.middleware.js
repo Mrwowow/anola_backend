@@ -36,11 +36,11 @@ const authenticate = asyncHandler(async (req, res, next) => {
       });
     }
     
-    // Check if user account is active
-    if (user.status !== 'active') {
+    // Check if user account is active or pending (allow pending users to access basic features)
+    if (user.status === 'suspended' || user.status === 'deleted') {
       return res.status(HTTP_STATUS.UNAUTHORIZED).json({
         success: false,
-        error: 'Account is not active'
+        error: 'Account is suspended or deleted'
       });
     }
     
