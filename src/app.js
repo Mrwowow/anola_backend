@@ -24,17 +24,24 @@ connectDB().catch(err => {
 app.set('trust proxy', 1);
 
 // Security middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
+// Disable CSP for Swagger UI routes
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api-docs')) {
+    // Swagger UI needs relaxed CSP
+    return next();
+  }
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
     },
-  },
-  crossOriginEmbedderPolicy: false
-}));
+    crossOriginEmbedderPolicy: false
+  })(req, res, next);
+});
 
 // CORS configuration
 const corsOptions = {
