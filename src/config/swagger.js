@@ -19,30 +19,18 @@ const options = {
     },
     servers: [
       {
+        url: 'https://anola-backend.vercel.app',
+        description: 'Production server (Vercel)'
+      },
+      {
         url: config.nodeEnv === 'production'
           ? 'https://api.anolahealth.com'
           : `http://localhost:${config.port}`,
-        description: config.nodeEnv === 'production' ? 'Production server' : 'Local development server (current port)'
+        description: config.nodeEnv === 'production' ? 'Production server (Custom domain)' : 'Local development server'
       },
       {
         url: 'http://localhost:3000',
-        description: 'Local server - Port 3000 (default)'
-      },
-      {
-        url: 'http://localhost:8080',
-        description: 'Local server - Port 8080'
-      },
-      {
-        url: 'http://localhost:5000',
-        description: 'Local server - Port 5000'
-      },
-      {
-        url: 'http://127.0.0.1:3000',
-        description: 'Local server - 127.0.0.1:3000'
-      },
-      {
-        url: 'https://api.anolahealth.com',
-        description: 'Production server'
+        description: 'Local server - Port 3000'
       }
     ],
     components: {
@@ -363,10 +351,23 @@ const options = {
       {
         name: 'Transactions',
         description: 'Transaction history and processing'
+      },
+      {
+        name: 'SuperAdmin',
+        description: 'Super admin platform management'
+      },
+      {
+        name: 'System',
+        description: 'System endpoints and health checks'
       }
     ]
   },
-  apis: ['./src/routes/*.js', './src/app.js']
+  apis: [
+    './src/routes/*.js',
+    './src/app.js',
+    __dirname + '/../routes/*.js',
+    __dirname + '/../app.js'
+  ]
 };
 
 const specs = swaggerJsdoc(options);
