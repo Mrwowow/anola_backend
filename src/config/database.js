@@ -23,8 +23,8 @@ const connectDB = async () => {
       serverSelectionTimeoutMS: 30000, // Increased to 30 seconds for serverless cold starts
       socketTimeoutMS: 45000,
       family: 4, // Force IPv4
-      // Disable buffering for serverless
-      bufferCommands: false,
+      // Re-enable buffering for better serverless compatibility
+      bufferCommands: true,
       // Auto-index only in development
       autoIndex: config.nodeEnv !== 'production',
     };
