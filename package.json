@@ -9,7 +9,8 @@
     "test": "jest --detectOpenHandles",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "build": "echo 'No build step required for Node.js'"
+    "build": "echo 'No build step required for Node.js'",
+    "create-super-admin": "node scripts/createSuperAdmin.js"
   },
   "keywords": [
     "healthcare",

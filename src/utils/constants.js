@@ -4,7 +4,8 @@ exports.USER_TYPES = {
   PROVIDER: 'provider',
   SPONSOR: 'sponsor',
   VENDOR: 'vendor',
-  ADMIN: 'admin'
+  ADMIN: 'admin',
+  SUPER_ADMIN: 'super_admin'
 };
 
 // Account Status

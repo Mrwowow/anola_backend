@@ -142,6 +142,7 @@ app.use('/api/medical-records', require('./routes/medicalRecord.routes'));
 app.use('/api/sponsorships', require('./routes/sponsorship.routes'));
 app.use('/api/wallets', require('./routes/wallet.routes'));
 app.use('/api/transactions', require('./routes/transaction.routes'));
+app.use('/api/super-admin', require('./routes/superAdmin.routes'));
 
 /**
  * @swagger
