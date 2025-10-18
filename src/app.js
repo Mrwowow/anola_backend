@@ -128,11 +128,16 @@ try {
     res.setHeader('Content-Type', 'application/json');
     res.send(swaggerSpecs);
   });
+
+  // Alternative HTML documentation page
+  app.get('/docs', (req, res) => {
+    res.sendFile(__dirname + '/../public/api-docs.html');
+  });
 } catch (error) {
   console.error('Swagger UI setup error:', error.message);
   // Provide a fallback endpoint
   app.get('/api-docs', (req, res) => {
-    res.status(200).send('<h1>API Documentation</h1><p>Swagger UI is currently unavailable. Please use <a href="/api-spec.json">/api-spec.json</a> for the OpenAPI specification.</p>');
+    res.sendFile(__dirname + '/../public/api-docs.html');
   });
   app.get('/api-spec.json', (req, res) => {
     res.status(200).json(swaggerSpecs || { openapi: '3.0.0', info: { title: 'Anola Health API', version: '1.0.0' }, paths: {} });
