@@ -162,6 +162,11 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Database connection middleware for all API routes
+// Ensures connection is established in serverless environments
+const { ensureDbConnection } = require('./middleware/db.middleware');
+app.use('/api', ensureDbConnection);
+
 // API routes
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/users', require('./routes/user.routes'));
