@@ -6,6 +6,8 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./config/swagger');
+const fs = require('fs');
+const path = require('path');
 
 const config = require('./config/config');
 const connectDB = require('./config/database');
@@ -131,13 +133,27 @@ try {
 
   // Alternative HTML documentation page
   app.get('/docs', (req, res) => {
-    res.sendFile(__dirname + '/../public/api-docs.html');
+    try {
+      const htmlPath = path.join(__dirname, '../public/api-docs.html');
+      const html = fs.readFileSync(htmlPath, 'utf8');
+      res.setHeader('Content-Type', 'text/html');
+      res.send(html);
+    } catch (err) {
+      res.status(500).send('Documentation page not available');
+    }
   });
 } catch (error) {
   console.error('Swagger UI setup error:', error.message);
   // Provide a fallback endpoint
   app.get('/api-docs', (req, res) => {
-    res.sendFile(__dirname + '/../public/api-docs.html');
+    try {
+      const htmlPath = path.join(__dirname, '../public/api-docs.html');
+      const html = fs.readFileSync(htmlPath, 'utf8');
+      res.setHeader('Content-Type', 'text/html');
+      res.send(html);
+    } catch (err) {
+      res.status(500).send('<h1>API Documentation</h1><p>Swagger UI is currently unavailable. Please use <a href="/api-spec.json">/api-spec.json</a> for the OpenAPI specification or visit <a href="https://editor.swagger.io/?url=https://anola-backend.vercel.app/api-spec.json">Swagger Editor</a>.</p>');
+    }
   });
   app.get('/api-spec.json', (req, res) => {
     res.status(200).json(swaggerSpecs || { openapi: '3.0.0', info: { title: 'Anola Health API', version: '1.0.0' }, paths: {} });
