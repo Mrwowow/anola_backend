@@ -13,8 +13,12 @@ const { errorHandler, notFound } = require('./middleware/error.middleware');
 
 const app = express();
 
-// Connect to database
-connectDB();
+// Connect to database (non-blocking for serverless)
+// Connection will be established on first request
+connectDB().catch(err => {
+  console.error('Initial database connection failed:', err.message);
+  // Don't exit in serverless - let it retry on next request
+});
 
 // Trust proxy for Vercel deployment
 app.set('trust proxy', 1);
