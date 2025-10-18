@@ -101,6 +101,13 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Swagger API Documentation
 // Wrap in try-catch to prevent crashes in serverless environments
 try {
+  // Add permissive CSP for Swagger UI
+  app.use('/api-docs', (req, res, next) => {
+    res.removeHeader('Content-Security-Policy');
+    res.setHeader('Content-Security-Policy', "default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src * 'unsafe-inline'; img-src * data: blob: 'unsafe-inline'; frame-src *; style-src * 'unsafe-inline';");
+    next();
+  });
+
   // Serve swagger UI static files and setup in one call
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
     customCss: '.swagger-ui .topbar { display: none }',
