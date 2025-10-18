@@ -94,8 +94,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Swagger API Documentation
 // Wrap in try-catch to prevent crashes in serverless environments
 try {
-  app.use('/api-docs', swaggerUi.serve);
-  app.get('/api-docs', swaggerUi.setup(swaggerSpecs, {
+  // Serve swagger UI static files and setup in one call
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
     customCss: '.swagger-ui .topbar { display: none }',
     customSiteTitle: 'Anola Health API Documentation',
     swaggerOptions: {
