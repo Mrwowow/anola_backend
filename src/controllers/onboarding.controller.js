@@ -451,7 +451,7 @@ exports.completeOnboarding = async (req, res) => {
         gender: step1.gender,
         avatar: session.data.profilePictureUrl || null,
         address: step1.address,
-        nationalId: null
+        nationalId: `P-${crypto.randomBytes(6).toString('hex').toUpperCase()}` // Generate placeholder
       },
       phone: step1.phone,
       medicalHistory: {
