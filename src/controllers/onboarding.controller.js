@@ -1,5 +1,4 @@
 const crypto = require('crypto');
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const QRCode = require('qrcode');
 const OnboardingSession = require('../models/onboardingSession.model');
@@ -446,8 +445,8 @@ exports.completeOnboarding = async (req, res) => {
       });
     }
 
-    // Hash password
-    const passwordHash = await bcrypt.hash(password, 10);
+    // Note: Password will be hashed by User model's pre-save hook
+    // Do not hash here to avoid double-hashing
 
     // Generate health card ID
     const healthCardId = `AH-${crypto.randomBytes(4).toString('hex').toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
@@ -459,7 +458,7 @@ exports.completeOnboarding = async (req, res) => {
 
     const user = await User.create({
       email: step1.email,
-      password: passwordHash,
+      password: password,  // Pass plain password - will be hashed by pre-save hook
       userType: 'patient',
       healthCardId,
       profile: {
