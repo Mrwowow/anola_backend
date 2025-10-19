@@ -512,7 +512,7 @@ exports.completeOnboarding = async (req, res) => {
       privacyPolicyAcceptedAt: new Date(),
       hipaaComplianceAcceptedAt: new Date(),
 
-      status: 'pending_verification'
+      status: 'pending' // Pending admin verification
     });
 
     // Generate auth tokens
