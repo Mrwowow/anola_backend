@@ -5,7 +5,7 @@ const QRCode = require('qrcode');
 const OnboardingSession = require('../models/onboardingSession.model');
 const User = require('../models/user.model');
 const Wallet = require('../models/wallet.model');
-const config = require('../config/environment');
+const config = require('../config/config');
 
 const HTTP_STATUS = {
   OK: 200,
@@ -505,13 +505,13 @@ exports.completeOnboarding = async (req, res) => {
     const accessToken = jwt.sign(
       { userId: user._id, role: user.userType },
       config.jwtSecret,
-      { expiresIn: '15m' }
+      { expiresIn: config.jwtExpire }
     );
 
     const refreshToken = jwt.sign(
       { userId: user._id },
-      config.jwtRefreshSecret,
-      { expiresIn: '7d' }
+      config.refreshSecret,
+      { expiresIn: config.refreshExpire }
     );
 
     // Mark session as complete and delete
@@ -524,7 +524,7 @@ exports.completeOnboarding = async (req, res) => {
         userId: user._id,
         healthCardId: user.healthCardId,
         qrCode: qrCodeBase64,
-        qrCodeUrl: `${config.apiUrl}/health-card/${healthCardId}.png`,
+        qrCodeUrl: `https://anola-backend.vercel.app/health-card/${healthCardId}.png`,
         status: user.status,
         createdAt: user.createdAt
       },
@@ -643,8 +643,8 @@ exports.uploadProfilePicture = async (req, res) => {
 
     // TODO: Upload to cloud storage (S3, Cloudinary, etc.)
     // For now, return placeholder URL
-    const profilePictureUrl = `${config.apiUrl}/uploads/profiles/${session.temporaryUserId}_${Date.now()}.jpg`;
-    const thumbnailUrl = `${config.apiUrl}/uploads/profiles/${session.temporaryUserId}_${Date.now()}_thumb.jpg`;
+    const profilePictureUrl = `https://anola-backend.vercel.app/uploads/profiles/${session.temporaryUserId}_${Date.now()}.jpg`;
+    const thumbnailUrl = `https://anola-backend.vercel.app/uploads/profiles/${session.temporaryUserId}_${Date.now()}_thumb.jpg`;
 
     // Update session
     session.data.profilePictureUrl = profilePictureUrl;
