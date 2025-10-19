@@ -482,7 +482,13 @@ exports.completeOnboarding = async (req, res) => {
 
     // Create wallet if requested
     if (step3.activateWallet) {
+      // Generate wallet ID
+      const timestamp = Date.now().toString(36).toUpperCase();
+      const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const walletId = `PW-${timestamp}-${random}`;
+
       const wallet = await Wallet.create({
+        walletId,
         owner: user._id,
         type: 'personal',
         balance: {
