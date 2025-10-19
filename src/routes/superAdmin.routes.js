@@ -194,6 +194,300 @@ router.get('/dashboard/activity', hasPermission('viewAnalytics'), superAdminCont
  */
 router.get('/dashboard/system-health', hasPermission('viewAnalytics'), superAdminController.getSystemHealth);
 
+// ==================== Analytics ====================
+
+/**
+ * @swagger
+ * /api/super-admin/analytics/revenue:
+ *   get:
+ *     summary: Get revenue analytics with charts data
+ *     description: Returns revenue overview, monthly trends, and breakdown by source
+ *     tags: [SuperAdmin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: period
+ *         schema:
+ *           type: string
+ *           enum: [7days, 30days, 3months, 6months, 1year]
+ *           default: 6months
+ *         description: Time period for analytics
+ *     responses:
+ *       200:
+ *         description: Revenue analytics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     overview:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: number
+ *                         growth:
+ *                           type: number
+ *                         currency:
+ *                           type: string
+ *                     monthlyData:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           month:
+ *                             type: string
+ *                           revenue:
+ *                             type: number
+ *                           transactions:
+ *                             type: integer
+ *                     breakdown:
+ *                       type: object
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ */
+router.get('/analytics/revenue', hasPermission('viewAnalytics'), superAdminController.getRevenueAnalytics);
+
+/**
+ * @swagger
+ * /api/super-admin/analytics/users:
+ *   get:
+ *     summary: Get user growth analytics
+ *     description: Returns user growth trends and distribution by type
+ *     tags: [SuperAdmin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: period
+ *         schema:
+ *           type: string
+ *           enum: [weekly, monthly]
+ *           default: monthly
+ *         description: Grouping period for data
+ *     responses:
+ *       200:
+ *         description: User growth analytics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                     growth:
+ *                       type: number
+ *                     periodData:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           period:
+ *                             type: string
+ *                           patients:
+ *                             type: integer
+ *                           providers:
+ *                             type: integer
+ *                           vendors:
+ *                             type: integer
+ *                           sponsors:
+ *                             type: integer
+ *                     distribution:
+ *                       type: object
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ */
+router.get('/analytics/users', hasPermission('viewAnalytics'), superAdminController.getUserGrowthAnalytics);
+
+/**
+ * @swagger
+ * /api/super-admin/analytics/top-performers:
+ *   get:
+ *     summary: Get top performing providers and vendors
+ *     description: Returns top performers by revenue and activity
+ *     tags: [SuperAdmin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [all, provider, vendor]
+ *           default: all
+ *         description: Type of performers to retrieve
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           minimum: 1
+ *           maximum: 50
+ *         description: Number of performers to return
+ *     responses:
+ *       200:
+ *         description: Top performers retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     providers:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           name:
+ *                             type: string
+ *                           email:
+ *                             type: string
+ *                           revenue:
+ *                             type: number
+ *                           appointments:
+ *                             type: integer
+ *                           rating:
+ *                             type: number
+ *                     vendors:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           name:
+ *                             type: string
+ *                           email:
+ *                             type: string
+ *                           revenue:
+ *                             type: number
+ *                           orders:
+ *                             type: integer
+ *                           rating:
+ *                             type: number
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ */
+router.get('/analytics/top-performers', hasPermission('viewAnalytics'), superAdminController.getTopPerformers);
+
+/**
+ * @swagger
+ * /api/super-admin/analytics/metrics:
+ *   get:
+ *     summary: Get platform metrics and KPIs
+ *     description: Returns session duration, bounce rate, conversion rate, and satisfaction scores
+ *     tags: [SuperAdmin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Platform metrics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     sessionDuration:
+ *                       type: object
+ *                       properties:
+ *                         average:
+ *                           type: string
+ *                         change:
+ *                           type: number
+ *                         trend:
+ *                           type: string
+ *                     bounceRate:
+ *                       type: object
+ *                     conversionRate:
+ *                       type: object
+ *                     satisfaction:
+ *                       type: object
+ *                     activeUsers:
+ *                       type: object
+ *                     totalTransactions:
+ *                       type: object
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ */
+router.get('/analytics/metrics', hasPermission('viewAnalytics'), superAdminController.getPlatformMetrics);
+
+/**
+ * @swagger
+ * /api/super-admin/analytics/geographic:
+ *   get:
+ *     summary: Get geographic distribution of users
+ *     description: Returns user and revenue distribution by region
+ *     tags: [SuperAdmin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Geographic distribution retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     regions:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           name:
+ *                             type: string
+ *                           users:
+ *                             type: integer
+ *                           revenue:
+ *                             type: number
+ *                           percentage:
+ *                             type: number
+ *                     states:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                     totalUsers:
+ *                       type: integer
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ */
+router.get('/analytics/geographic', hasPermission('viewAnalytics'), superAdminController.getGeographicDistribution);
+
 // ==================== User Management ====================
 
 /**

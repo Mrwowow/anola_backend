@@ -989,3 +989,616 @@ exports.getSystemHealth = async (req, res) => {
     });
   }
 };
+
+// ==================== Analytics Endpoints ====================
+
+/**
+ * Get revenue analytics with charts data
+ */
+exports.getRevenueAnalytics = async (req, res) => {
+  try {
+    const { period = '6months' } = req.query;
+
+    // Calculate start date based on period
+    const startDate = new Date();
+    switch (period) {
+      case '7days':
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+      case '30days':
+        startDate.setDate(startDate.getDate() - 30);
+        break;
+      case '3months':
+        startDate.setMonth(startDate.getMonth() - 3);
+        break;
+      case '6months':
+        startDate.setMonth(startDate.getMonth() - 6);
+        break;
+      case '1year':
+        startDate.setFullYear(startDate.getFullYear() - 1);
+        break;
+      default:
+        startDate.setMonth(startDate.getMonth() - 6);
+    }
+
+    // Get monthly revenue data from transactions
+    const Transaction = require('../models/transaction.model');
+
+    const monthlyRevenue = await Transaction.aggregate([
+      {
+        $match: {
+          status: 'completed',
+          createdAt: { $gte: startDate }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' }
+          },
+          revenue: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } }
+    ]).catch(() => []);
+
+    // Get breakdown by transaction type
+    const breakdown = await Transaction.aggregate([
+      {
+        $match: {
+          status: 'completed',
+          createdAt: { $gte: startDate }
+        }
+      },
+      {
+        $group: {
+          _id: '$type',
+          amount: { $sum: '$amount' }
+        }
+      }
+    ]).catch(() => []);
+
+    const total = breakdown.reduce((sum, item) => sum + item.amount, 0);
+
+    // Calculate growth (compare with previous period)
+    const previousPeriodStart = new Date(startDate);
+    previousPeriodStart.setMonth(previousPeriodStart.getMonth() - 6);
+
+    const previousTotal = await Transaction.aggregate([
+      {
+        $match: {
+          status: 'completed',
+          createdAt: { $gte: previousPeriodStart, $lt: startDate }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$amount' }
+        }
+      }
+    ]).catch(() => [{ total: 0 }]);
+
+    const growth = previousTotal[0]?.total > 0
+      ? ((total - previousTotal[0].total) / previousTotal[0].total * 100).toFixed(1)
+      : 0;
+
+    // Format breakdown
+    const formattedBreakdown = {
+      providerServices: {
+        amount: breakdown.find(b => b._id === 'appointment')?.amount || 0,
+        percentage: total > 0 ? ((breakdown.find(b => b._id === 'appointment')?.amount || 0) / total * 100).toFixed(1) : 0
+      },
+      vendorSales: {
+        amount: breakdown.find(b => b._id === 'product')?.amount || 0,
+        percentage: total > 0 ? ((breakdown.find(b => b._id === 'product')?.amount || 0) / total * 100).toFixed(1) : 0
+      },
+      platformFees: {
+        amount: breakdown.reduce((sum, item) => sum + (item.amount * 0.05), 0), // Assuming 5% platform fee
+        percentage: 5
+      },
+      sponsorships: {
+        amount: breakdown.find(b => b._id === 'sponsorship')?.amount || 0,
+        percentage: total > 0 ? ((breakdown.find(b => b._id === 'sponsorship')?.amount || 0) / total * 100).toFixed(1) : 0
+      }
+    };
+
+    // Format monthly data
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const formattedMonthlyData = monthlyRevenue.map(item => ({
+      month: `${monthNames[item._id.month - 1]} ${item._id.year}`,
+      revenue: item.revenue,
+      transactions: item.count
+    }));
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: {
+        overview: {
+          total,
+          growth: parseFloat(growth),
+          currency: 'USD'
+        },
+        monthlyData: formattedMonthlyData,
+        breakdown: formattedBreakdown,
+        period
+      }
+    });
+  } catch (error) {
+    console.error('Get revenue analytics error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to get revenue analytics',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get user growth analytics
+ */
+exports.getUserGrowthAnalytics = async (req, res) => {
+  try {
+    const { period = 'monthly' } = req.query;
+
+    // Calculate date range
+    const endDate = new Date();
+    const startDate = new Date();
+
+    if (period === 'weekly') {
+      startDate.setDate(startDate.getDate() - 84); // 12 weeks
+    } else {
+      startDate.setMonth(startDate.getMonth() - 12); // 12 months
+    }
+
+    // Get user growth data
+    const growthData = await User.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate },
+          status: { $ne: 'deleted' }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            week: period === 'weekly' ? { $week: '$createdAt' } : null,
+            month: period === 'monthly' ? { $month: '$createdAt' } : null,
+            userType: '$userType'
+          },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.week': 1 } }
+    ]);
+
+    // Get total users and calculate growth
+    const totalUsers = await User.countDocuments({ status: { $ne: 'deleted' } });
+
+    const previousPeriodStart = new Date(startDate);
+    if (period === 'weekly') {
+      previousPeriodStart.setDate(previousPeriodStart.getDate() - 84);
+    } else {
+      previousPeriodStart.setMonth(previousPeriodStart.getMonth() - 12);
+    }
+
+    const previousPeriodUsers = await User.countDocuments({
+      createdAt: { $gte: previousPeriodStart, $lt: startDate },
+      status: { $ne: 'deleted' }
+    });
+
+    const growth = previousPeriodUsers > 0
+      ? ((totalUsers - previousPeriodUsers) / previousPeriodUsers * 100).toFixed(1)
+      : 0;
+
+    // Format data by period
+    const formattedData = [];
+    const dataMap = new Map();
+
+    growthData.forEach(item => {
+      const key = period === 'weekly'
+        ? `Week ${item._id.week} ${item._id.year}`
+        : `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][item._id.month - 1]} ${item._id.year}`;
+
+      if (!dataMap.has(key)) {
+        dataMap.set(key, {
+          period: key,
+          patients: 0,
+          providers: 0,
+          vendors: 0,
+          sponsors: 0
+        });
+      }
+
+      const periodData = dataMap.get(key);
+      const userType = item._id.userType;
+
+      if (userType === 'patient') periodData.patients += item.count;
+      else if (userType === 'provider') periodData.providers += item.count;
+      else if (userType === 'vendor') periodData.vendors += item.count;
+      else if (userType === 'sponsor') periodData.sponsors += item.count;
+    });
+
+    dataMap.forEach(value => formattedData.push(value));
+
+    // Get distribution (reuse from getUserDistribution logic)
+    const distribution = await User.aggregate([
+      { $match: { status: { $ne: 'deleted' } } },
+      { $group: { _id: '$userType', count: { $sum: 1 } } }
+    ]);
+
+    const formattedDistribution = {
+      patients: { count: 0, percentage: 0 },
+      providers: { count: 0, percentage: 0 },
+      vendors: { count: 0, percentage: 0 },
+      sponsors: { count: 0, percentage: 0 }
+    };
+
+    distribution.forEach(item => {
+      const type = item._id === 'patient' ? 'patients'
+                 : item._id === 'provider' ? 'providers'
+                 : item._id === 'vendor' ? 'vendors'
+                 : item._id === 'sponsor' ? 'sponsors'
+                 : null;
+
+      if (type) {
+        formattedDistribution[type] = {
+          count: item.count,
+          percentage: totalUsers > 0 ? parseFloat(((item.count / totalUsers) * 100).toFixed(1)) : 0
+        };
+      }
+    });
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: {
+        total: totalUsers,
+        growth: parseFloat(growth),
+        periodData: formattedData,
+        distribution: formattedDistribution,
+        period
+      }
+    });
+  } catch (error) {
+    console.error('Get user growth analytics error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to get user growth analytics',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get top performers (providers and vendors)
+ */
+exports.getTopPerformers = async (req, res) => {
+  try {
+    const { type = 'all', limit = 10 } = req.query;
+    const resultLimit = Math.min(parseInt(limit), 50);
+
+    const result = {};
+
+    // Get top providers if requested
+    if (type === 'all' || type === 'provider') {
+      const Transaction = require('../models/transaction.model');
+      const Appointment = require('../models/appointment.model');
+
+      // Get provider revenue data
+      const providerRevenue = await Transaction.aggregate([
+        {
+          $match: {
+            type: 'appointment',
+            status: 'completed'
+          }
+        },
+        {
+          $group: {
+            _id: '$toUser',
+            revenue: { $sum: '$amount' },
+            transactionCount: { $sum: 1 }
+          }
+        },
+        { $sort: { revenue: -1 } },
+        { $limit: resultLimit }
+      ]).catch(() => []);
+
+      // Get provider IDs
+      const providerIds = providerRevenue.map(p => p._id);
+
+      // Get provider details and appointment counts
+      const providers = await User.find({
+        _id: { $in: providerIds },
+        userType: 'provider'
+      }).select('profile email');
+
+      const appointmentCounts = await Appointment.aggregate([
+        {
+          $match: {
+            providerId: { $in: providerIds },
+            status: { $in: ['completed', 'confirmed'] }
+          }
+        },
+        {
+          $group: {
+            _id: '$providerId',
+            appointments: { $sum: 1 }
+          }
+        }
+      ]).catch(() => []);
+
+      // Combine data
+      result.providers = providerRevenue.map(pr => {
+        const provider = providers.find(p => p._id.toString() === pr._id.toString());
+        const appointments = appointmentCounts.find(a => a._id.toString() === pr._id.toString());
+
+        return {
+          id: pr._id,
+          name: provider ? `${provider.profile.firstName} ${provider.profile.lastName}` : 'Unknown',
+          email: provider?.email,
+          revenue: pr.revenue,
+          appointments: appointments?.appointments || 0,
+          rating: 4.5 // TODO: Calculate from reviews when review model exists
+        };
+      });
+    }
+
+    // Get top vendors if requested
+    if (type === 'all' || type === 'vendor') {
+      const Transaction = require('../models/transaction.model');
+
+      // Get vendor revenue data
+      const vendorRevenue = await Transaction.aggregate([
+        {
+          $match: {
+            type: 'product',
+            status: 'completed'
+          }
+        },
+        {
+          $group: {
+            _id: '$toUser',
+            revenue: { $sum: '$amount' },
+            orders: { $sum: 1 }
+          }
+        },
+        { $sort: { revenue: -1 } },
+        { $limit: resultLimit }
+      ]).catch(() => []);
+
+      // Get vendor IDs
+      const vendorIds = vendorRevenue.map(v => v._id);
+
+      // Get vendor details
+      const vendors = await User.find({
+        _id: { $in: vendorIds },
+        userType: 'vendor'
+      }).select('profile email businessName');
+
+      // Combine data
+      result.vendors = vendorRevenue.map(vr => {
+        const vendor = vendors.find(v => v._id.toString() === vr._id.toString());
+
+        return {
+          id: vr._id,
+          name: vendor?.businessName || (vendor ? `${vendor.profile.firstName} ${vendor.profile.lastName}` : 'Unknown'),
+          email: vendor?.email,
+          revenue: vr.revenue,
+          orders: vr.orders,
+          rating: 4.3 // TODO: Calculate from reviews when review model exists
+        };
+      });
+    }
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('Get top performers error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to get top performers',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get platform metrics
+ */
+exports.getPlatformMetrics = async (req, res) => {
+  try {
+    // TODO: These metrics require session tracking and analytics infrastructure
+    // For now, return sample data structure that can be populated when tracking is implemented
+
+    const metrics = {
+      sessionDuration: {
+        average: '12m 34s',
+        change: 8.5,
+        trend: 'up'
+      },
+      bounceRate: {
+        value: 32.4,
+        change: -5.2,
+        trend: 'down'
+      },
+      conversionRate: {
+        value: 18.7,
+        change: 3.1,
+        trend: 'up'
+      },
+      satisfaction: {
+        score: 4.6,
+        outOf: 5,
+        change: 0.3,
+        trend: 'up'
+      },
+      // Additional useful metrics we can calculate now
+      activeUsers: {
+        daily: await User.countDocuments({
+          status: 'active',
+          lastLoginAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+        }).catch(() => 0),
+        weekly: await User.countDocuments({
+          status: 'active',
+          lastLoginAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+        }).catch(() => 0),
+        monthly: await User.countDocuments({
+          status: 'active',
+          lastLoginAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+        }).catch(() => 0)
+      },
+      totalTransactions: {
+        today: 0, // Will be populated when Transaction model has data
+        thisWeek: 0,
+        thisMonth: 0
+      }
+    };
+
+    // Get transaction counts if Transaction model exists
+    try {
+      const Transaction = require('../models/transaction.model');
+
+      metrics.totalTransactions.today = await Transaction.countDocuments({
+        createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+      });
+
+      metrics.totalTransactions.thisWeek = await Transaction.countDocuments({
+        createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+      });
+
+      metrics.totalTransactions.thisMonth = await Transaction.countDocuments({
+        createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+      });
+    } catch (err) {
+      // Transaction model might not exist yet
+    }
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: metrics,
+      note: 'Session tracking metrics are placeholder values. Implement analytics tracking for accurate data.'
+    });
+  } catch (error) {
+    console.error('Get platform metrics error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to get platform metrics',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get geographic distribution
+ */
+exports.getGeographicDistribution = async (req, res) => {
+  try {
+    // Get users grouped by country and state
+    const countryDistribution = await User.aggregate([
+      {
+        $match: { status: { $ne: 'deleted' } }
+      },
+      {
+        $group: {
+          _id: '$profile.address.country',
+          users: { $sum: 1 }
+        }
+      },
+      { $sort: { users: -1 } }
+    ]);
+
+    const stateDistribution = await User.aggregate([
+      {
+        $match: {
+          status: { $ne: 'deleted' },
+          'profile.address.country': { $exists: true }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            country: '$profile.address.country',
+            state: '$profile.address.state'
+          },
+          users: { $sum: 1 }
+        }
+      },
+      { $sort: { users: -1 } },
+      { $limit: 20 } // Top 20 states
+    ]);
+
+    const totalUsers = await User.countDocuments({ status: { $ne: 'deleted' } });
+
+    // Get revenue by region (if Transaction model exists)
+    let revenueByCountry = [];
+    try {
+      const Transaction = require('../models/transaction.model');
+
+      // Join transactions with user data to get country
+      revenueByCountry = await Transaction.aggregate([
+        {
+          $match: { status: 'completed' }
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'fromUser',
+            foreignField: '_id',
+            as: 'user'
+          }
+        },
+        { $unwind: '$user' },
+        {
+          $group: {
+            _id: '$user.profile.address.country',
+            revenue: { $sum: '$amount' }
+          }
+        },
+        { $sort: { revenue: -1 } }
+      ]);
+    } catch (err) {
+      // Transaction model might not exist
+    }
+
+    // Format regions data
+    const regions = countryDistribution.map(item => {
+      const revenue = revenueByCountry.find(r => r._id === item._id);
+
+      return {
+        name: item._id || 'Unknown',
+        users: item.users,
+        revenue: revenue?.revenue || 0,
+        percentage: totalUsers > 0 ? parseFloat(((item.users / totalUsers) * 100).toFixed(1)) : 0
+      };
+    });
+
+    // Format states data
+    const states = stateDistribution.map(item => ({
+      country: item._id.country || 'Unknown',
+      state: item._id.state || 'Unknown',
+      users: item.users,
+      percentage: totalUsers > 0 ? parseFloat(((item.users / totalUsers) * 100).toFixed(1)) : 0
+    }));
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: {
+        regions,
+        states,
+        totalUsers
+      }
+    });
+  } catch (error) {
+    console.error('Get geographic distribution error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to get geographic distribution',
+      error: error.message
+    });
+  }
+};
