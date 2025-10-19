@@ -99,12 +99,12 @@ exports.submitStep1 = async (req, res) => {
       });
     }
 
-    // Validate phone number format
-    const phoneRegex = /^[+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
+    // Validate phone number format (international format)
+    const phoneRegex = /^[+]?[0-9]{1,4}?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,4}[-\s\.]?[0-9]{1,9}$/;
     if (!phoneRegex.test(phone)) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({
         success: false,
-        message: 'Please enter a valid phone number (e.g., +1234567890 or 123-456-7890)'
+        message: 'Please enter a valid phone number (e.g., +1234567890, +2348100853150, or 123-456-7890)'
       });
     }
 
