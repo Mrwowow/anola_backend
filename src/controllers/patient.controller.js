@@ -2,7 +2,6 @@ const User = require('../models/user.model');
 const Appointment = require('../models/appointment.model');
 const Transaction = require('../models/transaction.model');
 const Wallet = require('../models/wallet.model');
-const Provider = require('../models/provider.model');
 const MedicalRecord = require('../models/medicalRecord.model');
 
 // Get patient dashboard

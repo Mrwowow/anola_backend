@@ -1,11 +1,10 @@
-const Sponsor = require('../models/sponsor.model');
 const Sponsorship = require('../models/sponsorship.model');
 const User = require('../models/user.model');
 
 // Get sponsor profile
 exports.getProfile = async (req, res) => {
   try {
-    const sponsor = await Sponsor.findById(req.user._id);
+    const sponsor = await User.findById(req.user._id);
 
     if (!sponsor) {
       return res.status(404).json({

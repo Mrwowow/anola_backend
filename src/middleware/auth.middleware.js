@@ -152,10 +152,10 @@ const requireProviderVerification = asyncHandler(async (req, res, next) => {
   }
   
   // For providers, check additional verification
-  const Provider = require('../models/provider.model');
-  const provider = await Provider.findById(req.user._id);
-  
-  if (!provider || !provider.verification.isVerified) {
+  const User = require('../models/user.model');
+  const provider = await User.findById(req.user._id);
+
+  if (!provider || !provider.verificationStatus?.identity?.verified) {
     return res.status(HTTP_STATUS.FORBIDDEN).json({
       success: false,
       error: 'Provider verification required'

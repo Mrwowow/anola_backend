@@ -205,6 +205,7 @@ app.use('/api', ensureDbConnection);
 // API routes
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/onboarding', require('./routes/onboarding.routes'));
+app.use('/api/providers/onboarding', require('./routes/providerOnboarding.routes'));
 app.use('/api/users', require('./routes/user.routes'));
 app.use('/api/patients', require('./routes/patient.routes'));
 app.use('/api/providers', require('./routes/provider.routes'));

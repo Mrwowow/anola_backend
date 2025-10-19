@@ -1,7 +1,4 @@
 const User = require('../models/user.model');
-const Provider = require('../models/provider.model');
-const Sponsor = require('../models/sponsor.model');
-const Vendor = require('../models/vendor.model');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const config = require('../config/config');

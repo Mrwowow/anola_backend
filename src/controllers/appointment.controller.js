@@ -1,5 +1,5 @@
 const Appointment = require('../models/appointment.model');
-const Provider = require('../models/provider.model');
+const User = require('../models/user.model');
 
 // Create appointment
 exports.create = async (req, res) => {

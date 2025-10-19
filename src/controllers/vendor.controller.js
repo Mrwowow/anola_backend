@@ -1,9 +1,9 @@
-const Vendor = require('../models/vendor.model');
+const User = require('../models/user.model');
 
 // Get vendor profile
 exports.getProfile = async (req, res) => {
   try {
-    const vendor = await Vendor.findById(req.user._id);
+    const vendor = await User.findById(req.user._id);
 
     if (!vendor) {
       return res.status(404).json({
