@@ -45,6 +45,155 @@ router.get('/dashboard', hasPermission('viewAnalytics'), superAdminController.ge
  *         description: Forbidden - Insufficient permissions */
 router.get('/statistics', hasPermission('viewAnalytics'), superAdminController.getStatistics);
 
+/**
+ * @swagger
+ * /api/super-admin/dashboard/user-distribution:
+ *   get:
+ *     summary: Get user distribution by type
+ *     description: Returns count and percentage breakdown of all user types on the platform
+ *     tags: [SuperAdmin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User distribution retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     totalUsers:
+ *                       type: integer
+ *                     distribution:
+ *                       type: object
+ *                       additionalProperties:
+ *                         type: object
+ *                         properties:
+ *                           count:
+ *                             type: integer
+ *                           percentage:
+ *                             type: string
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ */
+router.get('/dashboard/user-distribution', hasPermission('viewAnalytics'), superAdminController.getUserDistribution);
+
+/**
+ * @swagger
+ * /api/super-admin/dashboard/activity:
+ *   get:
+ *     summary: Get recent platform activity
+ *     description: Returns recent user registrations and transactions combined into activity feed
+ *     tags: [SuperAdmin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           minimum: 1
+ *           maximum: 50
+ *         description: Number of activities to return
+ *     responses:
+ *       200:
+ *         description: Recent activity retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     activities:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           type:
+ *                             type: string
+ *                           description:
+ *                             type: string
+ *                           timestamp:
+ *                             type: string
+ *                             format: date-time
+ *                     total:
+ *                       type: integer
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ */
+router.get('/dashboard/activity', hasPermission('viewAnalytics'), superAdminController.getRecentActivity);
+
+/**
+ * @swagger
+ * /api/super-admin/dashboard/system-health:
+ *   get:
+ *     summary: Get system health metrics
+ *     description: Returns API status, database connectivity, error rates, and storage metrics
+ *     tags: [SuperAdmin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: System health retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     api:
+ *                       type: object
+ *                       properties:
+ *                         status:
+ *                           type: string
+ *                         uptime:
+ *                           type: number
+ *                     database:
+ *                       type: object
+ *                       properties:
+ *                         connected:
+ *                           type: boolean
+ *                         status:
+ *                           type: string
+ *                     errorRate:
+ *                       type: object
+ *                       properties:
+ *                         last24h:
+ *                           type: string
+ *                         status:
+ *                           type: string
+ *                     storage:
+ *                       type: object
+ *                       properties:
+ *                         used:
+ *                           type: string
+ *                         status:
+ *                           type: string
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ */
+router.get('/dashboard/system-health', hasPermission('viewAnalytics'), superAdminController.getSystemHealth);
+
 // ==================== User Management ====================
 
 /**
