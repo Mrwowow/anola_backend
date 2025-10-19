@@ -482,19 +482,27 @@ exports.completeOnboarding = async (req, res) => {
 
     // Create wallet if requested
     if (step3.activateWallet) {
-      await Wallet.create({
-        userId: user._id,
-        balance: step3.initialDeposit?.amount || 0,
-        currency: step3.initialDeposit?.currency || 'USD',
+      const wallet = await Wallet.create({
+        owner: user._id,
+        type: 'personal',
+        balance: {
+          available: step3.initialDeposit?.amount || 0,
+          pending: 0,
+          reserved: 0,
+          currency: step3.initialDeposit?.currency || 'USD'
+        },
         status: 'active',
-        transactions: step3.initialDeposit ? [{
-          type: 'deposit',
-          amount: step3.initialDeposit.amount,
-          status: 'completed',
-          description: 'Initial deposit',
-          date: new Date()
-        }] : []
+        statistics: {
+          totalReceived: step3.initialDeposit?.amount || 0,
+          totalSpent: 0,
+          totalWithdrawn: 0,
+          transactionCount: step3.initialDeposit ? 1 : 0,
+          lastTransactionDate: step3.initialDeposit ? new Date() : null
+        }
       });
+
+      // Note: If actual transaction record is needed, create it separately
+      // and add its ID to wallet.transactions array
     }
 
     // Generate QR code for health card
