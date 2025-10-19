@@ -488,6 +488,270 @@ router.get('/analytics/metrics', hasPermission('viewAnalytics'), superAdminContr
  */
 router.get('/analytics/geographic', hasPermission('viewAnalytics'), superAdminController.getGeographicDistribution);
 
+// ==================== Approvals ====================
+
+/**
+ * @swagger
+ * /api/super-admin/approvals:
+ *   get:
+ *     summary: Get list of approval requests
+ *     description: Returns paginated list of approval requests with filters
+ *     tags: [SuperAdmin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [all, provider, vendor, sponsor, product]
+ *           default: all
+ *         description: Type of approval to filter
+ *       - in: query
+ *         name: priority
+ *         schema:
+ *           type: string
+ *           enum: [all, high, medium, low]
+ *           default: all
+ *         description: Priority level to filter
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [all, pending, approved, rejected]
+ *           default: pending
+ *         description: Status to filter
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Items per page
+ *     responses:
+ *       200:
+ *         description: Approvals retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     approvals:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                     pagination:
+ *                       type: object
+ *                     summary:
+ *                       type: object
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ */
+router.get('/approvals', hasPermission('manageUsers'), superAdminController.getApprovals);
+
+/**
+ * @swagger
+ * /api/super-admin/approvals/{id}:
+ *   get:
+ *     summary: Get approval details by ID
+ *     description: Returns detailed information about a specific approval request
+ *     tags: [SuperAdmin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Approval ID
+ *     responses:
+ *       200:
+ *         description: Approval details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     type:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                     priority:
+ *                       type: string
+ *                     applicant:
+ *                       type: object
+ *                     details:
+ *                       type: object
+ *                     documents:
+ *                       type: array
+ *                     history:
+ *                       type: array
+ *       404:
+ *         description: Approval not found
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ */
+router.get('/approvals/:id', hasPermission('manageUsers'), superAdminController.getApprovalDetails);
+
+/**
+ * @swagger
+ * /api/super-admin/approvals/{id}/approve:
+ *   post:
+ *     summary: Approve an application
+ *     description: Approves a pending approval request and activates the user account
+ *     tags: [SuperAdmin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Approval ID
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               notes:
+ *                 type: string
+ *                 description: Optional approval notes
+ *               notifyApplicant:
+ *                 type: boolean
+ *                 default: true
+ *                 description: Whether to send notification to applicant
+ *     responses:
+ *       200:
+ *         description: Application approved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     approvalId:
+ *                       type: string
+ *                     userId:
+ *                       type: string
+ *                     approvedAt:
+ *                       type: string
+ *                       format: date-time
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Application already processed
+ *       404:
+ *         description: Approval not found
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ */
+router.post(
+  '/approvals/:id/approve',
+  hasPermission('manageUsers'),
+  logAction('APPROVE_APPLICATION', 'Approval'),
+  superAdminController.approveApplication
+);
+
+/**
+ * @swagger
+ * /api/super-admin/approvals/{id}/reject:
+ *   post:
+ *     summary: Reject an application
+ *     description: Rejects a pending approval request with a reason
+ *     tags: [SuperAdmin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Approval ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - reason
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 description: Reason for rejection
+ *               notifyApplicant:
+ *                 type: boolean
+ *                 default: true
+ *                 description: Whether to send notification to applicant
+ *     responses:
+ *       200:
+ *         description: Application rejected successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     approvalId:
+ *                       type: string
+ *                     userId:
+ *                       type: string
+ *                     rejectedAt:
+ *                       type: string
+ *                       format: date-time
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Application already processed or missing reason
+ *       404:
+ *         description: Approval not found
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ */
+router.post(
+  '/approvals/:id/reject',
+  hasPermission('manageUsers'),
+  logAction('REJECT_APPLICATION', 'Approval'),
+  superAdminController.rejectApplication
+);
+
 // ==================== User Management ====================
 
 /**

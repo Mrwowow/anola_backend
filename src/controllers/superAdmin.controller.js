@@ -1602,3 +1602,336 @@ exports.getGeographicDistribution = async (req, res) => {
     });
   }
 };
+
+// ==================== Approval System Endpoints ====================
+
+/**
+ * Get list of pending approvals with filters
+ */
+exports.getApprovals = async (req, res) => {
+  try {
+    const {
+      type = 'all',
+      priority = 'all',
+      status = 'pending',
+      page = 1,
+      limit = 20
+    } = req.query;
+
+    const query = {};
+
+    // Apply filters
+    if (type !== 'all') query.type = type;
+    if (priority !== 'all') query.priority = priority;
+    if (status !== 'all') query.status = status;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const Approval = require('../models/approval.model');
+
+    // Get approvals with pagination
+    const approvals = await Approval.find(query)
+      .populate('userId', 'profile email phone userType')
+      .populate('processedBy', 'profile email')
+      .sort({ submittedAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const totalApprovals = await Approval.countDocuments(query);
+    const totalPages = Math.ceil(totalApprovals / parseInt(limit));
+
+    // Get summary counts
+    const summary = {
+      pending: await Approval.countDocuments({ status: 'pending' }),
+      approved: await Approval.countDocuments({ status: 'approved' }),
+      rejected: await Approval.countDocuments({ status: 'rejected' }),
+      highPriority: await Approval.countDocuments({ status: 'pending', priority: 'high' })
+    };
+
+    // Format approval data
+    const formattedApprovals = approvals.map(approval => ({
+      id: approval._id,
+      type: approval.type,
+      applicant: approval.userId ? {
+        id: approval.userId._id,
+        name: `${approval.userId.profile.firstName} ${approval.userId.profile.lastName}`,
+        email: approval.userId.email,
+        userType: approval.userId.userType
+      } : null,
+      status: approval.status,
+      priority: approval.priority,
+      submittedAt: approval.submittedAt,
+      processedAt: approval.processedAt,
+      processedBy: approval.processedBy ? {
+        name: `${approval.processedBy.profile.firstName} ${approval.processedBy.profile.lastName}`,
+        email: approval.processedBy.email
+      } : null,
+      daysPending: approval.daysPending,
+      documentsCount: approval.documents.length
+    }));
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: {
+        approvals: formattedApprovals,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages,
+          totalApprovals,
+          hasNext: page < totalPages,
+          hasPrev: page > 1
+        },
+        summary
+      }
+    });
+  } catch (error) {
+    console.error('Get approvals error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to get approvals',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get approval details by ID
+ */
+exports.getApprovalDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const Approval = require('../models/approval.model');
+
+    const approval = await Approval.findById(id)
+      .populate('userId', 'profile email phone userType licenseNumber businessName specialization')
+      .populate('processedBy', 'profile email')
+      .populate('history.performedBy', 'profile email');
+
+    if (!approval) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'Approval request not found'
+      });
+    }
+
+    // Format detailed response
+    const applicant = approval.userId;
+    const applicantData = {
+      id: applicant._id,
+      name: `${applicant.profile.firstName} ${applicant.profile.lastName}`,
+      email: applicant.email,
+      phone: applicant.phone,
+      userType: applicant.userType
+    };
+
+    // Add type-specific data
+    if (approval.type === 'provider' && applicant.licenseNumber) {
+      applicantData.licenseNumber = applicant.licenseNumber;
+      applicantData.specialization = applicant.specialization;
+    } else if (approval.type === 'vendor' && applicant.businessName) {
+      applicantData.businessName = applicant.businessName;
+    }
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: {
+        id: approval._id,
+        type: approval.type,
+        status: approval.status,
+        priority: approval.priority,
+        applicant: applicantData,
+        submittedAt: approval.submittedAt,
+        processedAt: approval.processedAt,
+        processedBy: approval.processedBy ? {
+          name: `${approval.processedBy.profile.firstName} ${approval.processedBy.profile.lastName}`,
+          email: approval.processedBy.email
+        } : null,
+        details: approval.details,
+        documents: approval.documents,
+        notes: approval.notes,
+        history: approval.history.map(h => ({
+          action: h.action,
+          performedBy: h.performedBy ? {
+            name: `${h.performedBy.profile.firstName} ${h.performedBy.profile.lastName}`,
+            email: h.performedBy.email
+          } : null,
+          timestamp: h.timestamp,
+          notes: h.notes
+        })),
+        daysPending: approval.daysPending
+      }
+    });
+  } catch (error) {
+    console.error('Get approval details error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to get approval details',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Approve an application
+ */
+exports.approveApplication = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notes, notifyApplicant = true } = req.body;
+
+    const Approval = require('../models/approval.model');
+
+    const approval = await Approval.findById(id).populate('userId');
+
+    if (!approval) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'Approval request not found'
+      });
+    }
+
+    if (approval.status !== 'pending') {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'This application has already been processed'
+      });
+    }
+
+    // Update approval status
+    approval.status = 'approved';
+    approval.processedBy = req.user._id;
+    approval.processedAt = new Date();
+    if (notes) approval.notes = notes;
+
+    // Add to history
+    approval.history.push({
+      action: 'APPROVED',
+      performedBy: req.user._id,
+      timestamp: new Date(),
+      notes
+    });
+
+    await approval.save();
+
+    // Update user account based on type
+    const user = approval.userId;
+
+    if (approval.type === 'provider') {
+      user.verificationStatus = user.verificationStatus || {};
+      user.verificationStatus.identity = user.verificationStatus.identity || {};
+      user.verificationStatus.identity.verified = true;
+      user.verificationStatus.identity.verifiedAt = new Date();
+      user.verificationStatus.identity.verifiedBy = req.user._id;
+    } else if (approval.type === 'vendor') {
+      user.verificationStatus = user.verificationStatus || {};
+      user.verificationStatus.identity = user.verificationStatus.identity || {};
+      user.verificationStatus.identity.verified = true;
+      user.verificationStatus.identity.verifiedAt = new Date();
+      user.verificationStatus.identity.verifiedBy = req.user._id;
+    }
+
+    // Activate account if it was pending
+    if (user.status === 'pending' || user.status === 'inactive') {
+      user.status = 'active';
+    }
+
+    await user.save();
+
+    // TODO: Send notification if notifyApplicant is true
+    // await sendApprovalNotification(user, approval.type);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: {
+        approvalId: approval._id,
+        userId: user._id,
+        approvedAt: approval.processedAt
+      },
+      message: 'Application approved successfully'
+    });
+  } catch (error) {
+    console.error('Approve application error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to approve application',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Reject an application
+ */
+exports.rejectApplication = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason, notifyApplicant = true } = req.body;
+
+    if (!reason) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'Rejection reason is required'
+      });
+    }
+
+    const Approval = require('../models/approval.model');
+
+    const approval = await Approval.findById(id).populate('userId');
+
+    if (!approval) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'Approval request not found'
+      });
+    }
+
+    if (approval.status !== 'pending') {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'This application has already been processed'
+      });
+    }
+
+    // Update approval status
+    approval.status = 'rejected';
+    approval.processedBy = req.user._id;
+    approval.processedAt = new Date();
+    approval.notes = reason;
+
+    // Add to history
+    approval.history.push({
+      action: 'REJECTED',
+      performedBy: req.user._id,
+      timestamp: new Date(),
+      notes: reason
+    });
+
+    await approval.save();
+
+    // Update user status
+    const user = approval.userId;
+    user.status = 'rejected';
+    await user.save();
+
+    // TODO: Send notification if notifyApplicant is true
+    // await sendRejectionNotification(user, approval.type, reason);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: {
+        approvalId: approval._id,
+        userId: user._id,
+        rejectedAt: approval.processedAt
+      },
+      message: 'Application rejected successfully'
+    });
+  } catch (error) {
+    console.error('Reject application error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to reject application',
+      error: error.message
+    });
+  }
+};
