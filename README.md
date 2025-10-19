@@ -138,6 +138,17 @@ For more details, see [SWAGGER_DOCUMENTATION.md](SWAGGER_DOCUMENTATION.md)
 - `POST /api/auth/refresh` - Refresh access token
 - `POST /api/auth/logout` - Logout user
 
+### Patient Onboarding
+- `POST /api/onboarding/init` - Initialize onboarding session
+- `POST /api/onboarding/step1` - Submit personal information
+- `POST /api/onboarding/step2` - Submit medical information
+- `POST /api/onboarding/step3` - Configure wallet and insurance
+- `POST /api/onboarding/complete` - Complete onboarding and create account
+- `GET /api/onboarding/status` - Get onboarding progress
+- `POST /api/onboarding/profile-picture` - Upload profile picture
+
+See [PATIENT_ONBOARDING_API_GUIDE.md](PATIENT_ONBOARDING_API_GUIDE.md) for complete documentation.
+
 ### User Management
 - `GET /api/users/profile` - Get user profile
 - `PUT /api/users/profile` - Update user profile

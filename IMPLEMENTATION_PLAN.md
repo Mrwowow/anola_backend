@@ -1,3 +1,37 @@
+# Backend Implementation Status
+
+## Patient Onboarding API ✅ COMPLETED (Oct 19, 2025)
+
+### Implemented Endpoints
+All 7 patient onboarding endpoints are live in production:
+
+- ✅ POST `/api/onboarding/init` - Initialize onboarding session
+- ✅ POST `/api/onboarding/step1` - Submit personal information
+- ✅ POST `/api/onboarding/step2` - Submit medical information
+- ✅ POST `/api/onboarding/step3` - Configure wallet and insurance
+- ✅ POST `/api/onboarding/complete` - Complete onboarding and create account
+- ✅ GET `/api/onboarding/status` - Get onboarding progress
+- ✅ POST `/api/onboarding/profile-picture` - Upload profile picture
+
+### Key Features
+- Session-based workflow with 30-minute expiry
+- TTL-indexed session model for auto-cleanup
+- Sequential step validation
+- Email and phone uniqueness checks
+- Age validation (18+ required)
+- Password strength requirements
+- Health card ID generation (format: AH-XXXX-XXX)
+- QR code generation for health cards
+- Automatic wallet creation with initial deposit
+- JWT token generation on completion
+- Full Swagger/OpenAPI documentation
+
+### Models Created
+- `OnboardingSession` - Temporary session storage with TTL expiry
+- Uses existing `User`, `Wallet` models for final account creation
+
+---
+
 # Super Admin API Implementation Plan
 
 ## Current vs Required Endpoints
