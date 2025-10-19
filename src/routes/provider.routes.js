@@ -1,18 +1,38 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const providerController = require('../controllers/provider.controller');
 const { authenticate, authorize } = require('../middleware/auth.middleware');
 const { USER_TYPES } = require('../utils/constants');
 
+// Configure multer for file uploads
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
+
 /**
  * @swagger
- * /api/providers/profile:
+ * /api/providers/{providerId}/profile:
  *   get:
  *     tags: [Providers]
  *     summary: Get provider profile
  *     description: Retrieve complete provider profile including services and schedule
- *     security:
- *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: providerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider ID
  *     responses:
  *       200:
  *         description: Provider profile retrieved successfully
@@ -24,48 +44,44 @@ const { USER_TYPES } = require('../utils/constants');
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 data:
+ *                 provider:
  *                   type: object
  *                   properties:
  *                     _id:
  *                       type: string
- *                     specialty:
+ *                     providerCode:
  *                       type: string
- *                       example: Cardiology
- *                     licenseNumber:
+ *                       example: PROV-5FB2DE7A
+ *                     providerType:
  *                       type: string
- *                     yearsOfExperience:
- *                       type: integer
- *                       example: 10
+ *                       example: doctor
+ *                     professionalInfo:
+ *                       type: object
+ *                     practiceInfo:
+ *                       type: object
  *                     services:
  *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           name:
- *                             type: string
- *                           price:
- *                             type: number
- *                           duration:
- *                             type: integer
- *                     rating:
- *                       type: number
- *                       example: 4.5
- *                     totalReviews:
- *                       type: integer
- *                       example: 150
- *       401:
- *         description: Unauthorized
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *                     availability:
+ *                       type: object
+ *                     statistics:
+ *                       type: object
+ *       404:
+ *         description: Provider not found
+ *       400:
+ *         description: User is not a provider
  *   put:
  *     tags: [Providers]
  *     summary: Update provider profile
  *     description: Update provider information and services
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: providerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider ID
  *     requestBody:
  *       required: true
  *       content:
@@ -73,140 +89,74 @@ const { USER_TYPES } = require('../utils/constants');
  *           schema:
  *             type: object
  *             properties:
- *               specialty:
- *                 type: string
- *               licenseNumber:
- *                 type: string
- *               bio:
- *                 type: string
- *               services:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     name:
- *                       type: string
- *                     price:
- *                       type: number
- *                     duration:
- *                       type: integer
+ *               profile:
+ *                 type: object
+ *               professionalInfo:
+ *                 type: object
+ *               practiceInfo:
+ *                 type: object
+ *               availability:
+ *                 type: object
+ *               preferences:
+ *                 type: object
  *     responses:
  *       200:
  *         description: Profile updated successfully
- *       400:
- *         description: Bad request
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Not authorized to update this profile
+ *       404:
+ *         description: Provider not found
  */
 
 /**
  * @swagger
- * /api/providers/schedule:
- *   get:
+ * /api/providers/{providerId}/avatar:
+ *   post:
  *     tags: [Providers]
- *     summary: Get provider schedule
- *     description: Retrieve provider's availability schedule
+ *     summary: Upload provider avatar
+ *     description: Upload profile picture for provider
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: query
- *         name: startDate
+ *       - in: path
+ *         name: providerId
+ *         required: true
  *         schema:
  *           type: string
- *           format: date
- *       - in: query
- *         name: endDate
- *         schema:
- *           type: string
- *           format: date
- *     responses:
- *       200:
- *         description: Schedule retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       date:
- *                         type: string
- *                         format: date
- *                       slots:
- *                         type: array
- *                         items:
- *                           type: object
- *                           properties:
- *                             time:
- *                               type: string
- *                               example: "09:00"
- *                             available:
- *                               type: boolean
- *       401:
- *         description: Unauthorized
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *   post:
- *     tags: [Providers]
- *     summary: Set availability
- *     description: Update provider's availability schedule
- *     security:
- *       - bearerAuth: []
+ *         description: Provider ID
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
- *             required:
- *               - date
- *               - slots
  *             properties:
- *               date:
+ *               file:
  *                 type: string
- *                 format: date
- *               slots:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     startTime:
- *                       type: string
- *                       example: "09:00"
- *                     endTime:
- *                       type: string
- *                       example: "17:00"
+ *                 format: binary
  *     responses:
  *       200:
- *         description: Schedule updated successfully
+ *         description: Avatar uploaded successfully
  *       400:
- *         description: Bad request
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *         description: No file uploaded
+ *       404:
+ *         description: Provider not found
  */
 
 /**
  * @swagger
- * /api/providers/appointments:
+ * /api/providers/{providerId}/appointments:
  *   get:
  *     tags: [Providers]
  *     summary: Get provider appointments
- *     description: Retrieve all appointments for the provider
- *     security:
- *       - bearerAuth: []
+ *     description: Retrieve all appointments for the provider with filtering and pagination
  *     parameters:
+ *       - in: path
+ *         name: providerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider ID
  *       - in: query
  *         name: status
  *         schema:
@@ -222,6 +172,11 @@ const { USER_TYPES } = require('../utils/constants');
  *         schema:
  *           type: integer
  *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
  *     responses:
  *       200:
  *         description: Appointments retrieved successfully
@@ -233,41 +188,38 @@ const { USER_TYPES } = require('../utils/constants');
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 data:
+ *                 appointments:
  *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Appointment'
- *       401:
- *         description: Unauthorized
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     currentPage:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     totalAppointments:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
  */
 
 /**
  * @swagger
- * /api/providers/earnings:
+ * /api/providers/{providerId}/services:
  *   get:
  *     tags: [Providers]
- *     summary: Get earnings summary
- *     description: Retrieve provider's earnings and transaction history
- *     security:
- *       - bearerAuth: []
+ *     summary: Get provider services
+ *     description: Retrieve all services offered by the provider
  *     parameters:
- *       - in: query
- *         name: startDate
+ *       - in: path
+ *         name: providerId
+ *         required: true
  *         schema:
  *           type: string
- *           format: date
- *       - in: query
- *         name: endDate
- *         schema:
- *           type: string
- *           format: date
+ *         description: Provider ID
  *     responses:
  *       200:
- *         description: Earnings retrieved successfully
+ *         description: Services retrieved successfully
  *         content:
  *           application/json:
  *             schema:
@@ -275,32 +227,188 @@ const { USER_TYPES } = require('../utils/constants');
  *               properties:
  *                 success:
  *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: object
- *                   properties:
- *                     totalEarnings:
- *                       type: number
- *                       example: 5000.00
- *                     pendingPayments:
- *                       type: number
- *                       example: 500.00
- *                     transactions:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/Transaction'
- *       401:
- *         description: Unauthorized
+ *                 services:
+ *                   type: array
+ *                 totalServices:
+ *                   type: integer
+ *   post:
+ *     tags: [Providers]
+ *     summary: Add new service
+ *     description: Add a new service to provider's offerings
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: providerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - duration
+ *               - price
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: General Consultation
+ *               category:
+ *                 type: string
+ *                 example: Consultation
+ *               description:
+ *                 type: string
+ *               duration:
+ *                 type: integer
+ *                 example: 30
+ *               price:
+ *                 type: number
+ *                 example: 50.00
+ *               insuranceCovered:
+ *                 type: boolean
+ *               availableModes:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   enum: [in-person, video, phone, chat]
+ *               preparationInstructions:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Service added successfully
+ *       400:
+ *         description: Bad request
+ *       404:
+ *         description: Provider not found
+ */
+
+/**
+ * @swagger
+ * /api/providers/{providerId}/services/{serviceId}:
+ *   put:
+ *     tags: [Providers]
+ *     summary: Update service
+ *     description: Update an existing service
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: providerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider ID
+ *       - in: path
+ *         name: serviceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Service ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               duration:
+ *                 type: integer
+ *               price:
+ *                 type: number
+ *               insuranceCovered:
+ *                 type: boolean
+ *               availableModes:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Service updated successfully
+ *       404:
+ *         description: Provider or service not found
+ *   delete:
+ *     tags: [Providers]
+ *     summary: Deactivate service
+ *     description: Deactivate a service (soft delete)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: providerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider ID
+ *       - in: path
+ *         name: serviceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Service ID
+ *     responses:
+ *       200:
+ *         description: Service deactivated successfully
+ *       404:
+ *         description: Provider or service not found
+ */
+
+/**
+ * @swagger
+ * /api/providers/{providerId}/patients:
+ *   get:
+ *     tags: [Providers]
+ *     summary: Get provider patients
+ *     description: Retrieve all patients who have had appointments with this provider
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: providerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider ID
+ *     responses:
+ *       200:
+ *         description: Patients retrieved successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 patients:
+ *                   type: array
+ *                 totalPatients:
+ *                   type: integer
  */
 
-// Provider routes - require authentication and provider role
-router.get('/profile', authenticate, authorize(USER_TYPES.PROVIDER), providerController.getProfile);
-router.put('/profile', authenticate, authorize(USER_TYPES.PROVIDER), providerController.updateProfile);
-router.get('/schedule', authenticate, authorize(USER_TYPES.PROVIDER), providerController.getSchedule);
-router.get('/patients', authenticate, authorize(USER_TYPES.PROVIDER), providerController.getPatients);
+// Provider routes
+// Public routes (no authentication required)
+router.get('/:providerId/profile', providerController.getProfile);
+router.get('/:providerId/services', providerController.getServices);
+router.get('/:providerId/appointments', providerController.getAppointments);
+
+// Protected routes (authentication required)
+router.put('/:providerId/profile', authenticate, providerController.updateProfile);
+router.post('/:providerId/avatar', authenticate, upload.single('file'), providerController.uploadAvatar);
+router.post('/:providerId/services', authenticate, providerController.addService);
+router.put('/:providerId/services/:serviceId', authenticate, providerController.updateService);
+router.delete('/:providerId/services/:serviceId', authenticate, providerController.deleteService);
+router.get('/:providerId/patients', authenticate, authorize(USER_TYPES.PROVIDER), providerController.getPatients);
 
 module.exports = router;

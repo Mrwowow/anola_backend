@@ -181,11 +181,175 @@ const userSchema = new mongoose.Schema({
   // Compliance
   termsAcceptedAt: Date,
   privacyAcceptedAt: Date,
+  privacyPolicyAcceptedAt: Date,
+  hipaaComplianceAcceptedAt: Date,
   dataProcessingConsent: {
     given: Boolean,
     date: Date
   },
-  
+
+  // Provider-Specific Fields
+  providerCode: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  providerType: {
+    type: String,
+    enum: ['doctor', 'nurse', 'therapist', 'specialist', 'other']
+  },
+  professionalInfo: {
+    specialization: String,
+    subSpecialties: [String],
+    licenseNumber: String,
+    licenseState: String,
+    licenseExpiry: Date,
+    yearsOfExperience: Number,
+    npiNumber: String,
+    deaNumber: String,
+    education: [{
+      degree: String,
+      institution: String,
+      year: Number,
+      field: String
+    }],
+    certifications: [{
+      name: String,
+      issuer: String,
+      issueDate: Date,
+      expiryDate: Date,
+      certificateNumber: String
+    }],
+    publications: [{
+      title: String,
+      journal: String,
+      year: Number,
+      url: String
+    }]
+  },
+  practiceInfo: {
+    practiceType: {
+      type: String,
+      enum: ['hospital', 'clinic', 'private', 'telehealth', 'other']
+    },
+    practiceName: String,
+    practiceAddress: {
+      street: String,
+      city: String,
+      state: String,
+      zipCode: String,
+      country: String
+    },
+    practicePhone: String,
+    practiceEmail: String,
+    acceptsInsurance: { type: Boolean, default: true },
+    insuranceProviders: [String],
+    languages: [String],
+    consultationModes: {
+      type: [String],
+      enum: ['in-person', 'video', 'phone', 'chat']
+    }
+  },
+  services: [{
+    serviceId: String,
+    name: String,
+    category: String,
+    description: String,
+    duration: Number,
+    price: Number,
+    insuranceCovered: Boolean,
+    availableModes: [String],
+    preparationInstructions: String,
+    isActive: { type: Boolean, default: true },
+    totalBookings: { type: Number, default: 0 },
+    createdAt: Date
+  }],
+  availability: {
+    isAcceptingNewPatients: { type: Boolean, default: true },
+    averageWaitTime: String,
+    workingHours: {
+      monday: { start: String, end: String, isWorking: Boolean },
+      tuesday: { start: String, end: String, isWorking: Boolean },
+      wednesday: { start: String, end: String, isWorking: Boolean },
+      thursday: { start: String, end: String, isWorking: Boolean },
+      friday: { start: String, end: String, isWorking: Boolean },
+      saturday: { start: String, end: String, isWorking: Boolean },
+      sunday: { start: String, end: String, isWorking: Boolean }
+    },
+    slotDuration: { type: Number, default: 30 },
+    breakTime: {
+      start: String,
+      end: String
+    }
+  },
+  statistics: {
+    rating: { type: Number, default: 0, min: 0, max: 5 },
+    totalReviews: { type: Number, default: 0 },
+    totalPatients: { type: Number, default: 0 },
+    totalAppointments: { type: Number, default: 0 },
+    completedAppointments: { type: Number, default: 0 },
+    cancelledAppointments: { type: Number, default: 0 }
+  },
+  earnings: {
+    totalEarnings: { type: Number, default: 0 },
+    pendingPayments: { type: Number, default: 0 },
+    paidOut: { type: Number, default: 0 },
+    platformFeePercentage: { type: Number, default: 10 }
+  },
+  bankAccount: {
+    accountNumber: { type: String, select: false },
+    routingNumber: { type: String, select: false },
+    accountType: { type: String, enum: ['checking', 'savings'] },
+    bankName: String,
+    accountHolderName: String
+  },
+
+  // Patient-Specific Fields (keeping existing if any)
+  medicalHistory: {
+    bloodType: String,
+    allergies: [{
+      allergen: String,
+      severity: String,
+      reaction: String
+    }],
+    chronicConditions: [{
+      condition: String,
+      diagnosedDate: Date,
+      status: String
+    }],
+    currentMedications: [{
+      medication: String,
+      dosage: String,
+      frequency: String,
+      startDate: Date
+    }],
+    surgeries: [{
+      procedure: String,
+      date: Date,
+      hospital: String
+    }],
+    familyHistory: {
+      heartDisease: Boolean,
+      diabetes: Boolean,
+      cancer: Boolean,
+      otherConditions: [String]
+    }
+  },
+  emergencyContact: {
+    name: String,
+    relationship: String,
+    phone: String,
+    email: String
+  },
+
+  // Relationships
+  patients: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  providers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  appointments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Appointment' }],
+  medicalRecords: [{ type: mongoose.Schema.Types.ObjectId, ref: 'MedicalRecord' }],
+  prescriptions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Prescription' }],
+  healthGoals: [{ type: mongoose.Schema.Types.ObjectId, ref: 'HealthGoal' }],
+
   // Metadata
   lastLogin: Date,
   lastActivity: Date,
