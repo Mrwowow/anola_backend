@@ -99,12 +99,30 @@ exports.submitStep1 = async (req, res) => {
       });
     }
 
+    // Validate phone number format
+    const phoneRegex = /^[+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
+    if (!phoneRegex.test(phone)) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'Please enter a valid phone number (e.g., +1234567890 or 123-456-7890)'
+      });
+    }
+
     // Check if email already exists
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
       return res.status(HTTP_STATUS.CONFLICT).json({
         success: false,
         message: 'Email already registered'
+      });
+    }
+
+    // Check if phone already exists
+    const existingPhone = await User.findOne({ phone });
+    if (existingPhone) {
+      return res.status(HTTP_STATUS.CONFLICT).json({
+        success: false,
+        message: 'Phone number already registered'
       });
     }
 
