@@ -266,6 +266,11 @@ const upload = multer({
  *               duration:
  *                 type: integer
  *                 example: 30
+ *               durationType:
+ *                 type: string
+ *                 enum: [minutes, hours, days, months, years]
+ *                 default: minutes
+ *                 example: minutes
  *               price:
  *                 type: number
  *                 example: 50.00
@@ -324,6 +329,9 @@ const upload = multer({
  *                 type: string
  *               duration:
  *                 type: integer
+ *               durationType:
+ *                 type: string
+ *                 enum: [minutes, hours, days, months, years]
  *               price:
  *                 type: number
  *               insuranceCovered:

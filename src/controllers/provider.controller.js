@@ -276,6 +276,7 @@ exports.addService = async (req, res) => {
       category,
       description,
       duration,
+      durationType,
       price,
       insuranceCovered,
       availableModes,
@@ -289,6 +290,15 @@ exports.addService = async (req, res) => {
       });
     }
 
+    // Validate durationType if provided
+    const validDurationTypes = ['minutes', 'hours', 'days', 'months', 'years'];
+    if (durationType && !validDurationTypes.includes(durationType)) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'Invalid duration type. Must be one of: minutes, hours, days, months, years'
+      });
+    }
+
     const serviceId = `SRV-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
     const newService = {
@@ -297,6 +307,7 @@ exports.addService = async (req, res) => {
       category: category || 'Consultation',
       description,
       duration,
+      durationType: durationType || 'minutes',
       price,
       insuranceCovered: insuranceCovered !== undefined ? insuranceCovered : true,
       availableModes: availableModes || ['in-person'],
@@ -352,6 +363,17 @@ exports.updateService = async (req, res) => {
         success: false,
         message: 'Service not found'
       });
+    }
+
+    // Validate durationType if provided
+    if (req.body.durationType) {
+      const validDurationTypes = ['minutes', 'hours', 'days', 'months', 'years'];
+      if (!validDurationTypes.includes(req.body.durationType)) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: 'Invalid duration type. Must be one of: minutes, hours, days, months, years'
+        });
+      }
     }
 
     // Update service fields

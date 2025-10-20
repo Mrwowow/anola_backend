@@ -500,8 +500,13 @@ exports.completeOnboarding = async (req, res) => {
         serviceId: `SRV-${crypto.randomBytes(3).toString('hex').toUpperCase()}`,
         name: service.serviceName,
         duration: service.duration,
+        durationType: service.durationType || 'minutes',
         price: service.price,
         description: service.description,
+        category: service.category || 'Consultation',
+        insuranceCovered: service.insuranceCovered !== undefined ? service.insuranceCovered : true,
+        availableModes: service.availableModes || ['in-person'],
+        preparationInstructions: service.preparationInstructions || '',
         isActive: true,
         totalBookings: 0,
         createdAt: new Date()

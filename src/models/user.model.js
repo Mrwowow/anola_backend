@@ -230,7 +230,7 @@ const userSchema = new mongoose.Schema({
   practiceInfo: {
     practiceType: {
       type: String,
-      enum: ['hospital', 'clinic', 'private', 'telehealth', 'other']
+      enum: ['hospital', 'clinic', 'private', 'telehealth', 'pharmacy', 'other']
     },
     practiceName: String,
     practiceAddress: {
@@ -256,6 +256,11 @@ const userSchema = new mongoose.Schema({
     category: String,
     description: String,
     duration: Number,
+    durationType: {
+      type: String,
+      enum: ['minutes', 'hours', 'days', 'months', 'years'],
+      default: 'minutes'
+    },
     price: Number,
     insuranceCovered: Boolean,
     availableModes: [String],
