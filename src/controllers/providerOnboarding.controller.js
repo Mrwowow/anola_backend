@@ -324,11 +324,11 @@ exports.submitStep3 = async (req, res) => {
     }
 
     // Validate practice type
-    const validPracticeTypes = ['hospital', 'clinic', 'private', 'telehealth', 'other'];
+    const validPracticeTypes = ['hospital', 'clinic', 'private', 'telehealth', 'pharmacy', 'other'];
     if (!validPracticeTypes.includes(practiceType)) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({
         success: false,
-        message: 'Invalid practice type'
+        message: 'Invalid practice type. Must be one of: hospital, clinic, private, telehealth, pharmacy, other'
       });
     }
 
