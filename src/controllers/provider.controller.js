@@ -539,7 +539,7 @@ exports.getAllProviders = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const providers = await User.find(query)
-      .select('-password -passwordResetToken -refreshTokens -twoFactorSecret -bankAccount')
+      .select('-password -passwordResetToken -refreshTokens -twoFactorSecret -bankAccount -paymentMethods -kycDocuments')
       .limit(parseInt(limit))
       .skip(skip)
       .sort({ createdAt: -1 });
