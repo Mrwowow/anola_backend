@@ -476,3 +476,212 @@ exports.getPatients = async (req, res) => {
     });
   }
 };
+
+/**
+ * Get all providers with filtering and pagination
+ */
+exports.getAllProviders = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      providerType,
+      specialization,
+      practiceType,
+      city,
+      state,
+      acceptsInsurance,
+      consultationMode,
+      search
+    } = req.query;
+
+    // Build query
+    const query = { userType: 'provider' };
+
+    if (providerType) {
+      query.providerType = providerType;
+    }
+
+    if (specialization) {
+      query['professionalInfo.specialization'] = new RegExp(specialization, 'i');
+    }
+
+    if (practiceType) {
+      query['practiceInfo.practiceType'] = practiceType;
+    }
+
+    if (city) {
+      query['practiceInfo.practiceAddress.city'] = new RegExp(city, 'i');
+    }
+
+    if (state) {
+      query['practiceInfo.practiceAddress.state'] = new RegExp(state, 'i');
+    }
+
+    if (acceptsInsurance !== undefined) {
+      query['practiceInfo.acceptsInsurance'] = acceptsInsurance === 'true';
+    }
+
+    if (consultationMode) {
+      query['practiceInfo.consultationModes'] = consultationMode;
+    }
+
+    // Search across multiple fields
+    if (search) {
+      query.$or = [
+        { 'profile.firstName': new RegExp(search, 'i') },
+        { 'profile.lastName': new RegExp(search, 'i') },
+        { 'practiceInfo.practiceName': new RegExp(search, 'i') },
+        { 'professionalInfo.specialization': new RegExp(search, 'i') }
+      ];
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const providers = await User.find(query)
+      .select('-password -passwordResetToken -refreshTokens -twoFactorSecret -bankAccount')
+      .limit(parseInt(limit))
+      .skip(skip)
+      .sort({ createdAt: -1 });
+
+    const total = await User.countDocuments(query);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      providers,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / parseInt(limit)),
+        totalProviders: total,
+        limit: parseInt(limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get all providers error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to get providers',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Search services across all providers
+ */
+exports.searchServices = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 100,
+      search,
+      category,
+      minPrice,
+      maxPrice,
+      durationType,
+      city,
+      state
+    } = req.query;
+
+    // Build query for providers
+    const providerQuery = { userType: 'provider', 'services.0': { $exists: true } };
+
+    if (city) {
+      providerQuery['practiceInfo.practiceAddress.city'] = new RegExp(city, 'i');
+    }
+
+    if (state) {
+      providerQuery['practiceInfo.practiceAddress.state'] = new RegExp(state, 'i');
+    }
+
+    // Get all providers with services
+    const providers = await User.find(providerQuery)
+      .select('providerCode profile practiceInfo services professionalInfo statistics');
+
+    // Flatten and filter services
+    let allServices = [];
+
+    providers.forEach(provider => {
+      if (provider.services && provider.services.length > 0) {
+        provider.services.forEach(service => {
+          if (service.isActive) {
+            // Apply service-level filters
+            let includeService = true;
+
+            if (search) {
+              const searchLower = search.toLowerCase();
+              includeService =
+                service.name.toLowerCase().includes(searchLower) ||
+                (service.description && service.description.toLowerCase().includes(searchLower));
+            }
+
+            if (category && service.category !== category) {
+              includeService = false;
+            }
+
+            if (minPrice && service.price < parseFloat(minPrice)) {
+              includeService = false;
+            }
+
+            if (maxPrice && service.price > parseFloat(maxPrice)) {
+              includeService = false;
+            }
+
+            if (durationType && service.durationType !== durationType) {
+              includeService = false;
+            }
+
+            if (includeService) {
+              allServices.push({
+                serviceId: service.serviceId,
+                name: service.name,
+                category: service.category,
+                description: service.description,
+                duration: service.duration,
+                durationType: service.durationType,
+                price: service.price,
+                insuranceCovered: service.insuranceCovered,
+                availableModes: service.availableModes,
+                provider: {
+                  id: provider._id,
+                  code: provider.providerCode,
+                  name: `${provider.profile?.firstName || ''} ${provider.profile?.lastName || ''}`.trim(),
+                  practiceName: provider.practiceInfo?.practiceName,
+                  specialization: provider.professionalInfo?.specialization,
+                  city: provider.practiceInfo?.practiceAddress?.city,
+                  state: provider.practiceInfo?.practiceAddress?.state,
+                  rating: provider.statistics?.rating || 0,
+                  totalReviews: provider.statistics?.totalReviews || 0
+                }
+              });
+            }
+          }
+        });
+      }
+    });
+
+    // Pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const paginatedServices = allServices.slice(skip, skip + parseInt(limit));
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      services: paginatedServices,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(allServices.length / parseInt(limit)),
+        totalServices: allServices.length,
+        limit: parseInt(limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Search services error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to search services',
+      error: error.message
+    });
+  }
+};

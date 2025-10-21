@@ -405,8 +405,122 @@ const upload = multer({
  *                   type: integer
  */
 
+/**
+ * @swagger
+ * /api/providers:
+ *   get:
+ *     tags: [Providers]
+ *     summary: Get all providers
+ *     description: Get list of all providers with filtering and pagination
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *       - in: query
+ *         name: providerType
+ *         schema:
+ *           type: string
+ *           enum: [doctor, nurse, therapist, specialist, other]
+ *       - in: query
+ *         name: specialization
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: practiceType
+ *         schema:
+ *           type: string
+ *           enum: [hospital, clinic, private, telehealth, pharmacy, other]
+ *       - in: query
+ *         name: city
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: state
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: acceptsInsurance
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: consultationMode
+ *         schema:
+ *           type: string
+ *           enum: [in-person, video, phone, chat]
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by name, practice name, or specialization
+ *     responses:
+ *       200:
+ *         description: Providers retrieved successfully
+ */
+
+/**
+ * @swagger
+ * /api/providers/services:
+ *   get:
+ *     tags: [Providers]
+ *     summary: Search services across all providers
+ *     description: Search and filter services from all providers
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 100
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by service name or description
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: minPrice
+ *         schema:
+ *           type: number
+ *       - in: query
+ *         name: maxPrice
+ *         schema:
+ *           type: number
+ *       - in: query
+ *         name: durationType
+ *         schema:
+ *           type: string
+ *           enum: [minutes, hours, days, months, years]
+ *       - in: query
+ *         name: city
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: state
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Services retrieved successfully
+ */
+
 // Provider routes
 // Public routes (no authentication required)
+router.get('/', providerController.getAllProviders);
+router.get('/services', providerController.searchServices);
 router.get('/:providerId/profile', providerController.getProfile);
 router.get('/:providerId/services', providerController.getServices);
 router.get('/:providerId/appointments', providerController.getAppointments);
