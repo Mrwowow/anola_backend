@@ -258,6 +258,22 @@ Content-Type: application/json
 }
 ```
 
+### Get Analytics
+```bash
+GET /api/providers/{providerId}/analytics?period=month
+Authorization: Bearer {accessToken}
+```
+
+**Period Options:** `day`, `week`, `month`, `year`, `all`
+
+**Response includes:**
+- Appointment statistics (total, completed, cancelled, by mode, by type)
+- Revenue analytics (total, pending, received, average per appointment)
+- Patient statistics (total, new, returning)
+- Top 5 performing services
+- Daily trends (appointments and revenue over time)
+- Performance metrics (completion rate, cancellation rate, no-show rate, ratings)
+
 ---
 
 ## Common Response Formats
