@@ -685,3 +685,200 @@ exports.searchServices = async (req, res) => {
     });
   }
 };
+
+/**
+ * Get provider analytics
+ */
+exports.getAnalytics = async (req, res) => {
+  try {
+    const { providerId } = req.params;
+    const { period = 'month' } = req.query; // day, week, month, year, all
+
+    // Verify provider exists
+    const provider = await User.findById(providerId);
+    if (!provider || provider.userType !== 'provider') {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'Provider not found'
+      });
+    }
+
+    // Calculate date range based on period
+    const now = new Date();
+    let startDate;
+
+    switch (period) {
+      case 'day':
+        startDate = new Date(now.setHours(0, 0, 0, 0));
+        break;
+      case 'week':
+        startDate = new Date(now.setDate(now.getDate() - 7));
+        break;
+      case 'month':
+        startDate = new Date(now.setMonth(now.getMonth() - 1));
+        break;
+      case 'year':
+        startDate = new Date(now.setFullYear(now.getFullYear() - 1));
+        break;
+      case 'all':
+        startDate = new Date(0); // Beginning of time
+        break;
+      default:
+        startDate = new Date(now.setMonth(now.getMonth() - 1));
+    }
+
+    // Get appointments for the period
+    const appointments = await Appointment.find({
+      provider: providerId,
+      createdAt: { $gte: startDate }
+    });
+
+    // Calculate appointment analytics
+    const appointmentStats = {
+      total: appointments.length,
+      scheduled: appointments.filter(a => a.status === 'scheduled').length,
+      completed: appointments.filter(a => a.status === 'completed').length,
+      cancelled: appointments.filter(a => a.status === 'cancelled').length,
+      noShow: appointments.filter(a => a.status === 'no-show').length,
+      byMode: {
+        'in-person': appointments.filter(a => a.mode === 'in-person').length,
+        video: appointments.filter(a => a.mode === 'video').length,
+        audio: appointments.filter(a => a.mode === 'audio').length,
+        chat: appointments.filter(a => a.mode === 'chat').length
+      },
+      byType: {}
+    };
+
+    // Count by appointment type
+    appointments.forEach(appointment => {
+      const type = appointment.type || 'other';
+      appointmentStats.byType[type] = (appointmentStats.byType[type] || 0) + 1;
+    });
+
+    // Calculate revenue analytics
+    const completedAppointments = appointments.filter(a => a.status === 'completed');
+    const totalRevenue = completedAppointments.reduce((sum, a) => sum + (a.payment?.amount || 0), 0);
+    const pendingPayments = appointments
+      .filter(a => a.status === 'completed' && a.payment?.status !== 'paid')
+      .reduce((sum, a) => sum + (a.payment?.amount || 0), 0);
+
+    const revenueStats = {
+      total: totalRevenue,
+      pending: pendingPayments,
+      received: totalRevenue - pendingPayments,
+      averagePerAppointment: completedAppointments.length > 0
+        ? totalRevenue / completedAppointments.length
+        : 0
+    };
+
+    // Service performance
+    const serviceStats = {};
+    appointments.forEach(appointment => {
+      if (appointment.serviceId) {
+        if (!serviceStats[appointment.serviceId]) {
+          serviceStats[appointment.serviceId] = {
+            bookings: 0,
+            revenue: 0
+          };
+        }
+        serviceStats[appointment.serviceId].bookings++;
+        if (appointment.status === 'completed') {
+          serviceStats[appointment.serviceId].revenue += (appointment.payment?.amount || 0);
+        }
+      }
+    });
+
+    // Get top services from provider's services
+    const topServices = provider.services
+      .map(service => ({
+        serviceId: service.serviceId,
+        name: service.name,
+        price: service.price,
+        bookings: serviceStats[service.serviceId]?.bookings || 0,
+        revenue: serviceStats[service.serviceId]?.revenue || 0
+      }))
+      .sort((a, b) => b.bookings - b.bookings)
+      .slice(0, 5);
+
+    // Patient analytics
+    const uniquePatients = [...new Set(appointments.map(a => a.patient.toString()))];
+    const patientStats = {
+      total: uniquePatients.length,
+      new: appointments.filter(a => {
+        const patientAppointments = appointments.filter(
+          ap => ap.patient.toString() === a.patient.toString()
+        );
+        return patientAppointments.length === 1;
+      }).length,
+      returning: 0
+    };
+    patientStats.returning = patientStats.total - patientStats.new;
+
+    // Time-based trends (daily breakdown for the period)
+    const dailyStats = [];
+    const dayInMs = 24 * 60 * 60 * 1000;
+    const periodDays = Math.min(Math.ceil((Date.now() - startDate.getTime()) / dayInMs), 30);
+
+    for (let i = 0; i < periodDays; i++) {
+      const dayStart = new Date(startDate.getTime() + (i * dayInMs));
+      const dayEnd = new Date(dayStart.getTime() + dayInMs);
+
+      const dayAppointments = appointments.filter(a => {
+        const appointmentDate = new Date(a.createdAt);
+        return appointmentDate >= dayStart && appointmentDate < dayEnd;
+      });
+
+      dailyStats.push({
+        date: dayStart.toISOString().split('T')[0],
+        appointments: dayAppointments.length,
+        revenue: dayAppointments
+          .filter(a => a.status === 'completed')
+          .reduce((sum, a) => sum + (a.payment?.amount || 0), 0)
+      });
+    }
+
+    // Overall performance metrics
+    const performanceMetrics = {
+      completionRate: appointments.length > 0
+        ? (appointmentStats.completed / appointments.length * 100).toFixed(2)
+        : 0,
+      cancellationRate: appointments.length > 0
+        ? (appointmentStats.cancelled / appointments.length * 100).toFixed(2)
+        : 0,
+      noShowRate: appointments.length > 0
+        ? (appointmentStats.noShow / appointments.length * 100).toFixed(2)
+        : 0,
+      averageRating: provider.statistics?.rating || 0,
+      totalReviews: provider.statistics?.totalReviews || 0
+    };
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      period,
+      startDate,
+      endDate: new Date(),
+      analytics: {
+        appointments: appointmentStats,
+        revenue: revenueStats,
+        patients: patientStats,
+        topServices,
+        dailyTrends: dailyStats,
+        performance: performanceMetrics
+      },
+      summary: {
+        totalAppointments: appointmentStats.total,
+        totalRevenue: revenueStats.total,
+        totalPatients: patientStats.total,
+        averageRating: performanceMetrics.averageRating
+      }
+    });
+
+  } catch (error) {
+    console.error('Get analytics error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to get analytics',
+      error: error.message
+    });
+  }
+};

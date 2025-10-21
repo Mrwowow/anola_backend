@@ -517,6 +517,107 @@ const upload = multer({
  *         description: Services retrieved successfully
  */
 
+/**
+ * @swagger
+ * /api/providers/{providerId}/analytics:
+ *   get:
+ *     tags: [Providers]
+ *     summary: Get provider analytics
+ *     description: Retrieve comprehensive analytics for a provider including appointments, revenue, and patient statistics
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: providerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider ID
+ *       - in: query
+ *         name: period
+ *         schema:
+ *           type: string
+ *           enum: [day, week, month, year, all]
+ *           default: month
+ *         description: Time period for analytics
+ *     responses:
+ *       200:
+ *         description: Analytics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 period:
+ *                   type: string
+ *                   example: month
+ *                 startDate:
+ *                   type: string
+ *                   format: date-time
+ *                 endDate:
+ *                   type: string
+ *                   format: date-time
+ *                 analytics:
+ *                   type: object
+ *                   properties:
+ *                     appointments:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: number
+ *                         scheduled:
+ *                           type: number
+ *                         completed:
+ *                           type: number
+ *                         cancelled:
+ *                           type: number
+ *                         noShow:
+ *                           type: number
+ *                         byMode:
+ *                           type: object
+ *                         byType:
+ *                           type: object
+ *                     revenue:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: number
+ *                         pending:
+ *                           type: number
+ *                         received:
+ *                           type: number
+ *                         averagePerAppointment:
+ *                           type: number
+ *                     patients:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: number
+ *                         new:
+ *                           type: number
+ *                         returning:
+ *                           type: number
+ *                     topServices:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                     dailyTrends:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                     performance:
+ *                       type: object
+ *                 summary:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Provider not found
+ */
+
 // Provider routes
 // Public routes (no authentication required)
 router.get('/', providerController.getAllProviders);
@@ -526,6 +627,7 @@ router.get('/:providerId/services', providerController.getServices);
 router.get('/:providerId/appointments', providerController.getAppointments);
 
 // Protected routes (authentication required)
+router.get('/:providerId/analytics', authenticate, providerController.getAnalytics);
 router.put('/:providerId/profile', authenticate, providerController.updateProfile);
 router.post('/:providerId/avatar', authenticate, upload.single('file'), providerController.uploadAvatar);
 router.post('/:providerId/services', authenticate, providerController.addService);
