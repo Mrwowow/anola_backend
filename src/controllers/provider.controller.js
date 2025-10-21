@@ -356,7 +356,10 @@ exports.updateService = async (req, res) => {
       });
     }
 
-    const service = provider.services?.find(s => s.serviceId === serviceId);
+    // Find service by either serviceId (SRV-XXX) or MongoDB _id
+    const service = provider.services?.find(s =>
+      s.serviceId === serviceId || s._id.toString() === serviceId
+    );
 
     if (!service) {
       return res.status(HTTP_STATUS.NOT_FOUND).json({
@@ -376,10 +379,17 @@ exports.updateService = async (req, res) => {
       }
     }
 
+    // Map field names (support both serviceName and name)
+    const updateData = { ...req.body };
+    if (updateData.serviceName) {
+      updateData.name = updateData.serviceName;
+      delete updateData.serviceName;
+    }
+
     // Update service fields
-    Object.keys(req.body).forEach(key => {
-      if (req.body[key] !== undefined && key !== 'serviceId') {
-        service[key] = req.body[key];
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] !== undefined && key !== 'serviceId') {
+        service[key] = updateData[key];
       }
     });
 
@@ -417,7 +427,10 @@ exports.deleteService = async (req, res) => {
       });
     }
 
-    const service = provider.services?.find(s => s.serviceId === serviceId);
+    // Find service by either serviceId (SRV-XXX) or MongoDB _id
+    const service = provider.services?.find(s =>
+      s.serviceId === serviceId || s._id.toString() === serviceId
+    );
 
     if (!service) {
       return res.status(HTTP_STATUS.NOT_FOUND).json({
