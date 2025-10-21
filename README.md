@@ -164,6 +164,7 @@ See [PATIENT_ONBOARDING_API_GUIDE.md](PATIENT_ONBOARDING_API_GUIDE.md) for compl
 - `GET /api/providers/:providerId/services` - Get provider services
 
 #### Provider Management (Protected)
+- `GET /api/providers/:providerId/analytics` - Get analytics and insights
 - `POST /api/providers/:providerId/services` - Add service
 - `PUT /api/providers/:providerId/services/:serviceId` - Update service
 - `DELETE /api/providers/:providerId/services/:serviceId` - Delete service
@@ -172,6 +173,7 @@ See [PATIENT_ONBOARDING_API_GUIDE.md](PATIENT_ONBOARDING_API_GUIDE.md) for compl
 
 **Documentation:**
 - [PROVIDER_BACKEND_API_GUIDE.md](PROVIDER_BACKEND_API_GUIDE.md) - Complete API reference
+- [PROVIDER_ANALYTICS_API.md](PROVIDER_ANALYTICS_API.md) - Analytics endpoint guide
 - [QUICK_API_REFERENCE.md](QUICK_API_REFERENCE.md) - Quick reference guide
 - [STEP3_REQUEST_FORMAT.md](STEP3_REQUEST_FORMAT.md) - Practice info step
 - [PROVIDER_DISCOVERY_API.md](PROVIDER_DISCOVERY_API.md) - Discovery endpoints
@@ -183,6 +185,7 @@ See [PATIENT_ONBOARDING_API_GUIDE.md](PATIENT_ONBOARDING_API_GUIDE.md) for compl
 - 🔍 Advanced filtering: By location, specialty, insurance, consultation mode
 - 💰 Price range search and service categorization
 - 📅 Availability scheduling and slot management
+- 📊 Comprehensive analytics: Appointments, revenue, patients, performance metrics
 
 ### User Management
 - `GET /api/users/profile` - Get user profile
