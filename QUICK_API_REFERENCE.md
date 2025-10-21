@@ -208,11 +208,19 @@ Content-Type: application/json
 }
 ```
 
+**Note:** `serviceId` can be either:
+- Service ID format: `SRV-XXXXXX`
+- MongoDB _id: `68f69bda582a884e78e0b0e7`
+
+**Field Names:** You can use either `name` or `serviceName` in the request body.
+
 ### Delete Service
 ```bash
 DELETE /api/providers/{providerId}/services/{serviceId}
 Authorization: Bearer {accessToken}
 ```
+
+**Note:** `serviceId` can be either Service ID (`SRV-XXXXXX`) or MongoDB _id.
 
 ### Update Profile
 ```bash
