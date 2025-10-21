@@ -149,6 +149,41 @@ For more details, see [SWAGGER_DOCUMENTATION.md](SWAGGER_DOCUMENTATION.md)
 
 See [PATIENT_ONBOARDING_API_GUIDE.md](PATIENT_ONBOARDING_API_GUIDE.md) for complete documentation.
 
+### Provider Onboarding & Management
+#### Onboarding Flow
+- `POST /api/providers/onboarding/init` - Initialize provider onboarding
+- `POST /api/providers/onboarding/step1` - Basic information
+- `POST /api/providers/onboarding/step2` - Professional credentials
+- `POST /api/providers/onboarding/step3` - Practice information & services
+- `POST /api/providers/onboarding/complete` - Finalize onboarding
+
+#### Provider Discovery (Public)
+- `GET /api/providers` - List all providers (with filters)
+- `GET /api/providers/services` - Search services across providers
+- `GET /api/providers/:providerId/profile` - Get provider profile
+- `GET /api/providers/:providerId/services` - Get provider services
+
+#### Provider Management (Protected)
+- `POST /api/providers/:providerId/services` - Add service
+- `PUT /api/providers/:providerId/services/:serviceId` - Update service
+- `DELETE /api/providers/:providerId/services/:serviceId` - Delete service
+- `PUT /api/providers/:providerId/profile` - Update profile
+- `PUT /api/providers/:providerId/availability` - Update availability
+
+**Documentation:**
+- [PROVIDER_BACKEND_API_GUIDE.md](PROVIDER_BACKEND_API_GUIDE.md) - Complete API reference
+- [QUICK_API_REFERENCE.md](QUICK_API_REFERENCE.md) - Quick reference guide
+- [STEP3_REQUEST_FORMAT.md](STEP3_REQUEST_FORMAT.md) - Practice info step
+- [PROVIDER_DISCOVERY_API.md](PROVIDER_DISCOVERY_API.md) - Discovery endpoints
+- [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) - Implementation details
+
+**Features:**
+- 🏥 Multiple practice types: Hospital, Clinic, Private, Telehealth, **Pharmacy**
+- ⏰ Service duration types: Minutes, Hours, Days, **Months**, **Years**
+- 🔍 Advanced filtering: By location, specialty, insurance, consultation mode
+- 💰 Price range search and service categorization
+- 📅 Availability scheduling and slot management
+
 ### User Management
 - `GET /api/users/profile` - Get user profile
 - `PUT /api/users/profile` - Update user profile
