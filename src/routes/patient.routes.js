@@ -243,10 +243,135 @@ const { USER_TYPES } = require('../utils/constants');
  *               $ref: '#/components/schemas/Error'
  */
 
+/**
+ * @swagger
+ * /api/patients/add:
+ *   post:
+ *     tags: [Patients]
+ *     summary: Add a new patient
+ *     description: Allows providers, vendors, and sponsors to register new patients
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - firstName
+ *               - lastName
+ *               - email
+ *               - phone
+ *               - dateOfBirth
+ *               - gender
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               middleName:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               phone:
+ *                 type: string
+ *               dateOfBirth:
+ *                 type: string
+ *                 format: date
+ *               gender:
+ *                 type: string
+ *                 enum: [male, female, other, prefer-not-to-say]
+ *               address:
+ *                 type: object
+ *               bloodType:
+ *                 type: string
+ *               allergies:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *               chronicConditions:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *               emergencyContact:
+ *                 type: object
+ *               createWallet:
+ *                 type: boolean
+ *                 default: false
+ *               initialDeposit:
+ *                 type: number
+ *                 default: 0
+ *     responses:
+ *       201:
+ *         description: Patient added successfully
+ *       400:
+ *         description: Bad request
+ *       409:
+ *         description: Email or phone already exists
+ */
+
+/**
+ * @swagger
+ * /api/patients/my-patients:
+ *   get:
+ *     tags: [Patients]
+ *     summary: Get my patients
+ *     description: Get all patients added by the authenticated provider/vendor/sponsor
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Patients retrieved successfully
+ */
+
+/**
+ * @swagger
+ * /api/patients/{patientId}:
+ *   get:
+ *     tags: [Patients]
+ *     summary: Get patient details
+ *     description: Get detailed information about a specific patient
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Patient details retrieved
+ *       404:
+ *         description: Patient not found
+ */
+
 // Patient routes - all require authentication
 router.get('/dashboard', authenticate, authorize(USER_TYPES.PATIENT), patientController.getDashboard);
 router.get('/health-card', authenticate, authorize(USER_TYPES.PATIENT), patientController.getHealthCard);
 router.get('/medical-history', authenticate, authorize(USER_TYPES.PATIENT), patientController.getMedicalHistory);
 router.get('/providers', authenticate, patientController.findProviders);
+
+// Add patient endpoints (for providers, vendors, sponsors)
+router.post('/add', authenticate, patientController.addPatient);
+router.get('/my-patients', authenticate, patientController.getMyPatients);
+router.get('/:patientId', authenticate, patientController.getPatientById);
 
 module.exports = router;
