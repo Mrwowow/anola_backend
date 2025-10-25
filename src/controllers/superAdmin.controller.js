@@ -140,12 +140,31 @@ exports.getDashboard = async (req, res) => {
  */
 exports.getAllUsers = async (req, res) => {
   try {
-    const { userType, status, search, page = 1, limit = 50 } = req.query;
+    // Handle both 'type' and 'userType' query params for flexibility
+    const {
+      type,
+      userType,
+      status,
+      search,
+      page = 1,
+      limit = 50
+    } = req.query;
 
     const query = {};
-    if (userType) query.userType = userType;
-    if (status) query.status = status;
-    if (search) {
+
+    // Handle userType/type filtering - only add if not 'all'
+    const typeFilter = type || userType;
+    if (typeFilter && typeFilter !== 'all') {
+      query.userType = typeFilter;
+    }
+
+    // Handle status filtering - only add if not 'all'
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+
+    // Handle search
+    if (search && search.trim()) {
       query.$or = [
         { email: { $regex: search, $options: 'i' } },
         { phone: { $regex: search, $options: 'i' } },
