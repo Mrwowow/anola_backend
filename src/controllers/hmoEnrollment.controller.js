@@ -2,6 +2,7 @@ const HMOEnrollment = require('../models/hmoEnrollment.model');
 const HMOPlan = require('../models/hmoPlan.model');
 const HMOClaim = require('../models/hmoClaim.model');
 const User = require('../models/user.model');
+const pkpassService = require('../services/pkpass.service');
 
 /**
  * @desc    Get all available HMO plans (Public)
@@ -632,19 +633,23 @@ exports.getEnrollmentClaims = async (req, res) => {
 
 /**
  * @desc    Download enrollment card/certificate
- * @route   GET /api/hmo-enrollments/:id/card
+ * @route   GET /api/hmo-enrollments/:id/card?format=pkpass|pdf|json
  * @access  Authenticated (Owner only)
  */
 exports.downloadEnrollmentCard = async (req, res) => {
   try {
     const { id } = req.params;
+    const { format = 'json' } = req.query; // pkpass, pdf, or json
     const userId = req.user._id;
 
     const enrollment = await HMOEnrollment.findOne({
       _id: id,
       userId,
       status: 'active'
-    }).populate('planId userId');
+    })
+      .populate('planId')
+      .populate('userId')
+      .populate('primaryCareProviderId', 'profile.firstName profile.lastName professionalInfo.specialization');
 
     if (!enrollment) {
       return res.status(404).json({
@@ -660,21 +665,77 @@ exports.downloadEnrollmentCard = async (req, res) => {
       });
     }
 
-    // TODO: Generate PDF card/certificate
-    // For now, return card details
-    res.status(200).json({
-      success: true,
-      data: {
-        membershipCardNumber: enrollment.membershipCardNumber,
-        enrollmentNumber: enrollment.enrollmentNumber,
-        memberName: enrollment.userId.fullName,
-        planName: enrollment.planId.name,
-        coverageStartDate: enrollment.coverageStartDate,
-        coverageEndDate: enrollment.coverageEndDate,
-        dependents: enrollment.dependents
-      },
-      message: 'Card details retrieved. PDF generation coming soon.'
-    });
+    const user = enrollment.userId;
+    const plan = enrollment.planId;
+
+    // Generate card based on requested format
+    if (format === 'pkpass') {
+      // Generate Apple Wallet Pass
+      const pkpassBuffer = await pkpassService.generateMembershipCard(enrollment, user, plan);
+
+      // Set headers for pkpass download
+      res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="HMO-${enrollment.membershipCardNumber}.pkpass"`
+      );
+      res.setHeader('Content-Length', pkpassBuffer.length);
+
+      return res.send(pkpassBuffer);
+
+    } else if (format === 'pdf') {
+      // Generate PDF card (HTML for now)
+      const html = await pkpassService.generatePDFCard(enrollment, user, plan);
+
+      res.setHeader('Content-Type', 'text/html');
+      res.setHeader(
+        'Content-Disposition',
+        `inline; filename="HMO-${enrollment.membershipCardNumber}.html"`
+      );
+
+      return res.send(html);
+
+    } else {
+      // Return JSON data (default)
+      res.status(200).json({
+        success: true,
+        data: {
+          membershipCardNumber: enrollment.membershipCardNumber,
+          enrollmentNumber: enrollment.enrollmentNumber,
+          memberName: `${user.profile?.firstName || ''} ${user.profile?.lastName || ''}`.trim(),
+          dateOfBirth: user.profile?.dateOfBirth,
+          planName: plan.name,
+          planCode: plan.planCode,
+          planCategory: plan.category,
+          enrollmentType: enrollment.enrollmentType,
+          coverageStartDate: enrollment.coverageStartDate,
+          coverageEndDate: enrollment.coverageEndDate,
+          dependents: enrollment.dependents,
+          primaryCareProvider: enrollment.primaryCareProviderId
+            ? {
+                name: `${enrollment.primaryCareProviderId.profile?.firstName || ''} ${enrollment.primaryCareProviderId.profile?.lastName || ''}`.trim(),
+                specialty: enrollment.primaryCareProviderId.professionalInfo?.specialization
+              }
+            : null,
+          providerInfo: {
+            name: plan.provider?.name,
+            phone: plan.provider?.phone,
+            email: plan.provider?.email
+          },
+          coverage: {
+            deductible: enrollment.limits?.deductible,
+            maxOutOfPocket: enrollment.limits?.maxOutOfPocket,
+            annualMaximum: enrollment.limits?.annualMaximum
+          },
+          downloadLinks: {
+            pkpass: `/api/hmo-enrollments/${id}/card?format=pkpass`,
+            pdf: `/api/hmo-enrollments/${id}/card?format=pdf`,
+            json: `/api/hmo-enrollments/${id}/card?format=json`
+          }
+        },
+        message: 'Membership card data retrieved successfully'
+      });
+    }
   } catch (error) {
     console.error('Error downloading enrollment card:', error);
     res.status(500).json({
