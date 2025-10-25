@@ -31,7 +31,7 @@ exports.updateProfile = async (req, res) => {
   try {
     const { businessName, businessType, description, products, services } = req.body;
 
-    const vendor = await Vendor.findById(req.user._id);
+    const vendor = await User.findById(req.user._id);
 
     if (!vendor) {
       return res.status(404).json({

@@ -226,6 +226,9 @@ app.use('/api/wallets', require('./routes/wallet.routes'));
 app.use('/api/transactions', require('./routes/transaction.routes'));
 app.use('/api/super-admin', require('./routes/superAdmin.routes'));
 
+// HMO Plans & Enrollments (Public and Authenticated routes)
+app.use('/api', require('./routes/hmoPublic.routes'));
+
 /**
  * @swagger
  * /:

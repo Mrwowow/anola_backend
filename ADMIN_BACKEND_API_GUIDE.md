@@ -14,11 +14,12 @@ This guide provides complete backend API specifications for integrating the Supe
 4. [Analytics APIs](#analytics-apis)
 5. [Transaction APIs](#transaction-apis)
 6. [Approval APIs](#approval-apis)
-7. [System Logs APIs](#system-logs-apis)
-8. [Settings APIs](#settings-apis)
-9. [Database Schema](#database-schema)
-10. [Error Handling](#error-handling)
-11. [Implementation Examples](#implementation-examples)
+7. [HMO Plans Management APIs](#hmo-plans-management-apis)
+8. [System Logs APIs](#system-logs-apis)
+9. [Settings APIs](#settings-apis)
+10. [Database Schema](#database-schema)
+11. [Error Handling](#error-handling)
+12. [Implementation Examples](#implementation-examples)
 
 ---
 
@@ -1239,6 +1240,636 @@ interface RejectResponse {
 
 ---
 
+## 🏥 HMO Plans Management APIs
+
+### List All HMO Plans
+
+```typescript
+// GET /api/super-admin/hmo-plans?page=1&limit=20&status=all&category=all&planType=all&search=query
+interface ListHMOPlansRequest {
+  page?: number;
+  limit?: number;
+  status?: 'all' | 'active' | 'inactive' | 'suspended' | 'discontinued';
+  category?: 'all' | 'basic' | 'standard' | 'premium' | 'platinum';
+  planType?: 'all' | 'individual' | 'family' | 'corporate' | 'group';
+  search?: string; // searches name, plan code, provider name, description
+  isAvailableForNewEnrollment?: boolean;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+interface ListHMOPlansResponse {
+  success: boolean;
+  data: {
+    plans: Array<{
+      _id: string;
+      name: string;
+      planCode: string;
+      description: string;
+      provider: {
+        name: string;
+        email: string;
+        phone: string;
+        contactPerson?: string;
+        website?: string;
+      };
+      planType: 'individual' | 'family' | 'corporate' | 'group';
+      category: 'basic' | 'standard' | 'premium' | 'platinum';
+      pricing: {
+        monthlyPremium: {
+          individual: number;
+          family?: number;
+          corporate?: number;
+        };
+        annualPremium: {
+          individual: number;
+          family?: number;
+          corporate?: number;
+        };
+        currency: string;
+      };
+      status: string;
+      isAvailableForNewEnrollment: boolean;
+      statistics: {
+        totalEnrollments: number;
+        activeMembers: number;
+        totalClaimsPaid: number;
+        totalClaimsAmount: number;
+      };
+      createdAt: string;
+      updatedAt: string;
+    }>;
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalPlans: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+    summary: {
+      total: number;
+      active: number;
+      inactive: number;
+      suspended: number;
+      discontinued: number;
+    };
+  };
+}
+```
+
+**Implementation:**
+
+```javascript
+// routes/admin/hmoPlans.js
+router.get('/hmo-plans', verifyAdminAuth, async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      status = 'all',
+      category = 'all',
+      planType = 'all',
+      search = '',
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      isAvailableForNewEnrollment
+    } = req.query;
+
+    // Build query
+    const query = {};
+
+    if (status !== 'all') query.status = status;
+    if (category !== 'all') query.category = category;
+    if (planType !== 'all') query.planType = planType;
+    if (isAvailableForNewEnrollment !== undefined) {
+      query.isAvailableForNewEnrollment = isAvailableForNewEnrollment === 'true';
+    }
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { planCode: { $regex: search, $options: 'i' } },
+        { 'provider.name': { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Count total
+    const total = await HMOPlan.countDocuments(query);
+
+    // Fetch plans
+    const plans = await HMOPlan.find(query)
+      .populate('createdBy', 'profile.firstName profile.lastName email')
+      .populate('lastModifiedBy', 'profile.firstName profile.lastName email')
+      .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .lean();
+
+    // Get summary
+    const summary = await HMOPlan.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        plans,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / limit),
+          totalPlans: total,
+          hasNext: page * limit < total,
+          hasPrev: page > 1
+        },
+        summary: {
+          total,
+          active: summary.find(s => s._id === 'active')?.count || 0,
+          inactive: summary.find(s => s._id === 'inactive')?.count || 0,
+          suspended: summary.find(s => s._id === 'suspended')?.count || 0,
+          discontinued: summary.find(s => s._id === 'discontinued')?.count || 0
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+```
+
+### Get HMO Plan Details
+
+```typescript
+// GET /api/super-admin/hmo-plans/:id
+interface HMOPlanDetailsResponse {
+  success: boolean;
+  data: {
+    _id: string;
+    name: string;
+    planCode: string;
+    description: string;
+    provider: {
+      name: string;
+      contactPerson: string;
+      email: string;
+      phone: string;
+      address: object;
+      website: string;
+      licenseNumber: string;
+    };
+    planType: string;
+    category: string;
+    coverage: {
+      outpatientCare: CoverageDetails;
+      inpatientCare: CoverageDetails;
+      emergencyCare: CoverageDetails;
+      surgery: CoverageDetails;
+      maternityAndChildbirth: CoverageDetails;
+      prescriptionDrugs: CoverageDetails;
+      diagnosticTests: CoverageDetails;
+      dentalCare: CoverageDetails;
+      visionCare: CoverageDetails;
+      mentalHealth: CoverageDetails;
+      preventiveCare: CoverageDetails;
+      specialistConsultation: CoverageDetails;
+    };
+    pricing: {
+      monthlyPremium: object;
+      annualPremium: object;
+      registrationFee: number;
+      deductible: object;
+      maxOutOfPocket: object;
+      currency: string;
+    };
+    limits: {
+      annualMaximum: number;
+      lifetimeMaximum: number;
+      dependentsAllowed: number;
+      ageLimit: { min: number; max: number };
+    };
+    exclusions: Array<{ category: string; description: string }>;
+    network: {
+      type: string;
+      providers: Array<object>;
+      hospitals: string[];
+      pharmacies: string[];
+      clinics: string[];
+    };
+    enrollment: {
+      openEnrollment: { startDate: Date; endDate: Date };
+      minimumMembers: number;
+      autoRenewal: boolean;
+      gracePeriod: number;
+    };
+    status: string;
+    isAvailableForNewEnrollment: boolean;
+    statistics: {
+      totalEnrollments: number;
+      activeMembers: number;
+      totalClaimsPaid: number;
+      totalClaimsAmount: number;
+      averageClaimProcessingTime: number;
+      customerSatisfactionRating: number;
+    };
+    documents: Array<object>;
+    keyBenefits: string[];
+    additionalBenefits: Array<object>;
+    createdBy: object;
+    lastModifiedBy: object;
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+
+interface CoverageDetails {
+  covered: boolean;
+  copayment?: number;
+  coveragePercentage?: number;
+  requiresReferral?: boolean;
+  limit?: {
+    amount: number;
+    period: string;
+  };
+}
+```
+
+### Create HMO Plan
+
+```typescript
+// POST /api/super-admin/hmo-plans
+interface CreateHMOPlanRequest {
+  name: string;
+  planCode: string;
+  description: string;
+  provider: {
+    name: string;
+    email: string;
+    phone: string;
+    contactPerson?: string;
+    address?: object;
+    website?: string;
+    licenseNumber?: string;
+  };
+  planType: 'individual' | 'family' | 'corporate' | 'group';
+  category: 'basic' | 'standard' | 'premium' | 'platinum';
+  coverage?: object;
+  pricing: {
+    monthlyPremium: {
+      individual: number;
+      family?: number;
+      corporate?: number;
+    };
+    registrationFee?: number;
+    deductible?: object;
+    maxOutOfPocket?: object;
+    currency?: string;
+  };
+  limits?: object;
+  exclusions?: Array<object>;
+  network?: object;
+  enrollment?: object;
+  status?: string;
+  isAvailableForNewEnrollment?: boolean;
+  documents?: Array<object>;
+  keyBenefits?: string[];
+  additionalBenefits?: Array<object>;
+}
+
+interface CreateHMOPlanResponse {
+  success: boolean;
+  data: object;
+  message: string;
+}
+```
+
+**Implementation:**
+
+```javascript
+router.post('/hmo-plans', verifyAdminAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const planData = req.body;
+
+    // Check if plan code already exists
+    const existingPlan = await HMOPlan.findOne({
+      planCode: planData.planCode.toUpperCase()
+    });
+
+    if (existingPlan) {
+      return res.status(400).json({
+        success: false,
+        message: 'HMO plan with this code already exists'
+      });
+    }
+
+    // Add admin who created the plan
+    planData.createdBy = req.admin._id;
+    planData.lastModifiedBy = req.admin._id;
+
+    const hmoPlan = await HMOPlan.create(planData);
+
+    // Log action
+    await AdminLog.create({
+      adminId: req.admin._id,
+      action: 'CREATE_HMO_PLAN',
+      targetResourceId: hmoPlan._id,
+      details: { planCode: hmoPlan.planCode, planName: hmoPlan.name }
+    });
+
+    res.status(201).json({
+      success: true,
+      data: hmoPlan,
+      message: 'HMO plan created successfully'
+    });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors
+      });
+    }
+
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+```
+
+### Update HMO Plan
+
+```typescript
+// PUT /api/super-admin/hmo-plans/:id
+interface UpdateHMOPlanRequest {
+  // Any fields from CreateHMOPlanRequest
+  [key: string]: any;
+}
+
+interface UpdateHMOPlanResponse {
+  success: boolean;
+  data: object;
+  message: string;
+}
+```
+
+### Update HMO Plan Status
+
+```typescript
+// PATCH /api/super-admin/hmo-plans/:id/status
+interface UpdateHMOPlanStatusRequest {
+  status: 'active' | 'inactive' | 'suspended' | 'discontinued';
+  reason?: string;
+}
+
+interface UpdateHMOPlanStatusResponse {
+  success: boolean;
+  data: {
+    planId: string;
+    newStatus: string;
+    updatedAt: string;
+  };
+  message: string;
+}
+```
+
+**Implementation:**
+
+```javascript
+router.patch('/hmo-plans/:id/status',
+  verifyAdminAuth,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status, reason } = req.body;
+
+      // Validate status
+      const validStatuses = ['active', 'inactive', 'suspended', 'discontinued'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid status value'
+        });
+      }
+
+      const hmoPlan = await HMOPlan.findById(id);
+
+      if (!hmoPlan) {
+        return res.status(404).json({
+          success: false,
+          message: 'HMO plan not found'
+        });
+      }
+
+      hmoPlan.status = status;
+      hmoPlan.lastModifiedBy = req.admin._id;
+
+      // Add note about status change
+      if (reason) {
+        hmoPlan.internalNotes = `${hmoPlan.internalNotes || ''}\n[${new Date().toISOString()}] Status changed to ${status}. Reason: ${reason}`;
+      }
+
+      // If discontinued or suspended, make unavailable for new enrollment
+      if (status === 'discontinued' || status === 'suspended') {
+        hmoPlan.isAvailableForNewEnrollment = false;
+      }
+
+      await hmoPlan.save();
+
+      // Log action
+      await AdminLog.create({
+        adminId: req.admin._id,
+        action: 'UPDATE_HMO_PLAN_STATUS',
+        targetResourceId: hmoPlan._id,
+        details: { newStatus: status, reason }
+      });
+
+      res.json({
+        success: true,
+        data: {
+          planId: hmoPlan._id,
+          newStatus: hmoPlan.status,
+          updatedAt: hmoPlan.updatedAt
+        },
+        message: `HMO plan status updated to ${status}`
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+});
+```
+
+### Delete HMO Plan
+
+```typescript
+// DELETE /api/super-admin/hmo-plans/:id
+interface DeleteHMOPlanRequest {
+  permanent?: boolean; // true for hard delete, false for soft delete
+}
+
+interface DeleteHMOPlanResponse {
+  success: boolean;
+  message: string;
+  data: {
+    planId: string;
+    deletedAt?: string;
+    status?: string;
+  };
+}
+```
+
+### Get HMO Plan Statistics
+
+```typescript
+// GET /api/super-admin/hmo-plans/stats/overview
+interface HMOPlanStatisticsResponse {
+  success: boolean;
+  data: {
+    overview: {
+      totalPlans: number;
+      activePlans: number;
+      totalEnrollments: number;
+      totalActiveMembers: number;
+      totalClaimsPaid: number;
+      totalClaimsAmount: number;
+    };
+    distribution: {
+      byCategory: Array<{
+        _id: string;
+        count: number;
+        activeMembers: number;
+      }>;
+      byPlanType: Array<{
+        _id: string;
+        count: number;
+        activeMembers: number;
+      }>;
+    };
+    topPlans: Array<{
+      name: string;
+      planCode: string;
+      statistics: {
+        activeMembers: number;
+        totalEnrollments: number;
+      };
+    }>;
+  };
+}
+```
+
+**Implementation:**
+
+```javascript
+router.get('/hmo-plans/stats/overview', verifyAdminAuth, async (req, res) => {
+  try {
+    // Get overall statistics
+    const totalPlans = await HMOPlan.countDocuments();
+    const activePlans = await HMOPlan.countDocuments({ status: 'active' });
+
+    // Get enrollment statistics
+    const enrollmentStats = await HMOPlan.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalEnrollments: { $sum: '$statistics.totalEnrollments' },
+          totalActiveMembers: { $sum: '$statistics.activeMembers' },
+          totalClaimsPaid: { $sum: '$statistics.totalClaimsPaid' },
+          totalClaimsAmount: { $sum: '$statistics.totalClaimsAmount' }
+        }
+      }
+    ]);
+
+    // Get distribution by category
+    const categoryDistribution = await HMOPlan.aggregate([
+      {
+        $group: {
+          _id: '$category',
+          count: { $sum: 1 },
+          activeMembers: { $sum: '$statistics.activeMembers' }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Get distribution by plan type
+    const planTypeDistribution = await HMOPlan.aggregate([
+      {
+        $group: {
+          _id: '$planType',
+          count: { $sum: 1 },
+          activeMembers: { $sum: '$statistics.activeMembers' }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Get top plans
+    const topPlans = await HMOPlan.find({ status: 'active' })
+      .select('name planCode statistics.activeMembers statistics.totalEnrollments')
+      .sort({ 'statistics.activeMembers': -1 })
+      .limit(5);
+
+    res.json({
+      success: true,
+      data: {
+        overview: {
+          totalPlans,
+          activePlans,
+          totalEnrollments: enrollmentStats[0]?.totalEnrollments || 0,
+          totalActiveMembers: enrollmentStats[0]?.totalActiveMembers || 0,
+          totalClaimsPaid: enrollmentStats[0]?.totalClaimsPaid || 0,
+          totalClaimsAmount: enrollmentStats[0]?.totalClaimsAmount || 0
+        },
+        distribution: {
+          byCategory: categoryDistribution,
+          byPlanType: planTypeDistribution
+        },
+        topPlans
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+```
+
+### Network Management
+
+#### Add Provider to HMO Plan Network
+
+```typescript
+// POST /api/super-admin/hmo-plans/:id/network/providers
+interface AddProviderToNetworkRequest {
+  providerId: string;
+  name: string;
+  specialty: string;
+  location: string;
+}
+
+interface AddProviderToNetworkResponse {
+  success: boolean;
+  data: Array<object>;
+  message: string;
+}
+```
+
+#### Remove Provider from HMO Plan Network
+
+```typescript
+// DELETE /api/super-admin/hmo-plans/:id/network/providers/:providerId
+interface RemoveProviderFromNetworkResponse {
+  success: boolean;
+  data: Array<object>;
+  message: string;
+}
+```
+
+---
+
 ## 📝 System Logs APIs
 
 ### Get System Logs
@@ -1684,6 +2315,196 @@ const AdminLogSchema = new mongoose.Schema({
     default: Date.now
   }
 });
+```
+
+### HMO Plan Schema
+
+```javascript
+const HMOPlanSchema = new mongoose.Schema({
+  // Basic Information
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+    unique: true
+  },
+  planCode: {
+    type: String,
+    required: true,
+    unique: true,
+    uppercase: true
+  },
+  description: {
+    type: String,
+    required: true
+  },
+
+  // Provider Details
+  provider: {
+    name: { type: String, required: true },
+    contactPerson: String,
+    email: { type: String, required: true },
+    phone: { type: String, required: true },
+    address: {
+      street: String,
+      city: String,
+      state: String,
+      country: String,
+      zipCode: String
+    },
+    website: String,
+    licenseNumber: String
+  },
+
+  // Plan Details
+  planType: {
+    type: String,
+    enum: ['individual', 'family', 'corporate', 'group'],
+    required: true
+  },
+  category: {
+    type: String,
+    enum: ['basic', 'standard', 'premium', 'platinum'],
+    required: true
+  },
+
+  // Coverage Information (comprehensive medical services coverage)
+  coverage: {
+    outpatientCare: {
+      covered: Boolean,
+      copayment: Number,
+      coveragePercentage: Number,
+      limit: {
+        amount: Number,
+        period: String
+      }
+    },
+    inpatientCare: { /* similar structure */ },
+    emergencyCare: { /* similar structure */ },
+    surgery: { /* similar structure */ },
+    maternityAndChildbirth: { /* similar structure */ },
+    prescriptionDrugs: { /* similar structure */ },
+    diagnosticTests: { /* similar structure */ },
+    dentalCare: { /* similar structure */ },
+    visionCare: { /* similar structure */ },
+    mentalHealth: { /* similar structure */ },
+    preventiveCare: { /* similar structure */ },
+    specialistConsultation: {
+      covered: Boolean,
+      copayment: Number,
+      coveragePercentage: Number,
+      requiresReferral: Boolean,
+      limit: {
+        amount: Number,
+        period: String
+      }
+    }
+  },
+
+  // Financial Details
+  pricing: {
+    monthlyPremium: {
+      individual: { type: Number, required: true },
+      family: Number,
+      corporate: Number
+    },
+    annualPremium: {
+      individual: Number,
+      family: Number,
+      corporate: Number
+    },
+    registrationFee: Number,
+    deductible: {
+      individual: Number,
+      family: Number
+    },
+    maxOutOfPocket: {
+      individual: Number,
+      family: Number
+    },
+    currency: {
+      type: String,
+      default: 'USD'
+    }
+  },
+
+  // Plan Limits
+  limits: {
+    annualMaximum: Number,
+    lifetimeMaximum: Number,
+    dependentsAllowed: Number,
+    ageLimit: {
+      min: { type: Number, default: 0 },
+      max: { type: Number, default: 100 }
+    }
+  },
+
+  // Network Information
+  network: {
+    type: { type: String, enum: ['PPO', 'HMO', 'EPO', 'POS'] },
+    providers: [{
+      providerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      name: String,
+      specialty: String,
+      location: String
+    }],
+    hospitals: [String],
+    pharmacies: [String],
+    clinics: [String]
+  },
+
+  // Enrollment Details
+  enrollment: {
+    openEnrollment: {
+      startDate: Date,
+      endDate: Date
+    },
+    minimumMembers: Number,
+    autoRenewal: Boolean,
+    gracePeriod: Number
+  },
+
+  // Plan Status
+  status: {
+    type: String,
+    enum: ['active', 'inactive', 'suspended', 'discontinued'],
+    default: 'active'
+  },
+  isAvailableForNewEnrollment: {
+    type: Boolean,
+    default: true
+  },
+
+  // Statistics
+  statistics: {
+    totalEnrollments: { type: Number, default: 0 },
+    activeMembers: { type: Number, default: 0 },
+    totalClaimsPaid: { type: Number, default: 0 },
+    totalClaimsAmount: { type: Number, default: 0 },
+    averageClaimProcessingTime: Number,
+    customerSatisfactionRating: Number
+  },
+
+  // Administrative
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  lastModifiedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  notes: String,
+  internalNotes: String
+}, {
+  timestamps: true
+});
+
+// Indexes
+HMOPlanSchema.index({ planCode: 1 });
+HMOPlanSchema.index({ status: 1, isAvailableForNewEnrollment: 1 });
+HMOPlanSchema.index({ 'provider.name': 1 });
+HMOPlanSchema.index({ category: 1, planType: 1 });
 ```
 
 ### Platform Settings Schema

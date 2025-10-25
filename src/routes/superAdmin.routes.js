@@ -956,6 +956,12 @@ router.post(
  *         description: Forbidden - Insufficient permissions */
 router.get('/sponsorships', hasPermission('manageSponsorships'), superAdminController.getAllSponsorships);
 
+// ==================== HMO Plans Management ====================
+
+// Import and mount HMO Plans routes
+const hmoPlanRoutes = require('./hmoPlan.routes');
+router.use('/', hmoPlanRoutes);
+
 // ==================== Audit & Logs ====================
 
 /**

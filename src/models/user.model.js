@@ -354,6 +354,7 @@ const userSchema = new mongoose.Schema({
   medicalRecords: [{ type: mongoose.Schema.Types.ObjectId, ref: 'MedicalRecord' }],
   prescriptions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Prescription' }],
   healthGoals: [{ type: mongoose.Schema.Types.ObjectId, ref: 'HealthGoal' }],
+  hmoEnrollments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'HMOEnrollment' }],
 
   // Metadata
   lastLogin: Date,

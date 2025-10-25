@@ -352,13 +352,13 @@ exports.getAllProviders = async (req, res) => {
       ];
     }
 
-    const providers = await Provider.find(query)
+    const providers = await User.find(query)
       .select('-password -refreshTokens')
       .limit(limit * 1)
       .skip((page - 1) * limit)
       .sort({ createdAt: -1 });
 
-    const count = await Provider.countDocuments(query);
+    const count = await User.countDocuments(query);
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
@@ -386,7 +386,10 @@ exports.getAllProviders = async (req, res) => {
  */
 exports.verifyProvider = async (req, res) => {
   try {
-    const provider = await Provider.findById(req.params.id);
+    const provider = await User.findOne({
+      _id: req.params.id,
+      userType: USER_TYPES.PROVIDER
+    });
 
     if (!provider) {
       return res.status(HTTP_STATUS.NOT_FOUND).json({
@@ -395,9 +398,15 @@ exports.verifyProvider = async (req, res) => {
       });
     }
 
-    provider.verification.isVerified = true;
-    provider.verification.verifiedAt = new Date();
-    provider.verification.verifiedBy = req.superAdmin._id;
+    // Update verification status
+    if (!provider.verificationStatus) {
+      provider.verificationStatus = {};
+    }
+    if (!provider.verificationStatus.identity) {
+      provider.verificationStatus.identity = {};
+    }
+    provider.verificationStatus.identity.verified = true;
+    provider.verificationStatus.identity.verifiedAt = new Date();
     provider.status = ACCOUNT_STATUS.ACTIVE;
 
     await provider.save();

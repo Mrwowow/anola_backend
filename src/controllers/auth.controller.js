@@ -61,7 +61,7 @@ exports.register = async (req, res) => {
         });
       }
 
-      user = await Provider.create({
+      user = await User.create({
         ...baseUserData,
         professionalInfo: {
           licenseNumber,
@@ -80,7 +80,7 @@ exports.register = async (req, res) => {
         }
       });
     } else if (userType === 'sponsor') {
-      user = await Sponsor.create({
+      user = await User.create({
         ...baseUserData,
         organizationInfo: {
           name: organizationName || `${firstName} ${lastName} Foundation`,
@@ -89,7 +89,7 @@ exports.register = async (req, res) => {
         }
       });
     } else if (userType === 'vendor') {
-      user = await Vendor.create({
+      user = await User.create({
         ...baseUserData,
         businessInfo: {
           name: businessName || `${firstName} ${lastName} Business`,

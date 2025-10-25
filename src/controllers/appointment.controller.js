@@ -15,7 +15,10 @@ exports.create = async (req, res) => {
     }
 
     // Check if provider exists
-    const provider = await Provider.findById(providerId);
+    const provider = await User.findOne({
+      _id: providerId,
+      userType: 'provider'
+    });
     if (!provider) {
       return res.status(404).json({
         success: false,

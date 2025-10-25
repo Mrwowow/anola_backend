@@ -192,21 +192,21 @@ exports.findProviders = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    const providers = await Provider.find(query)
-      .select('profile.firstName profile.lastName specialization profile.address rating availability')
+    const providers = await User.find(query)
+      .select('profile.firstName profile.lastName professionalInfo.specialization profile.address statistics.rating availability')
       .skip(skip)
       .limit(parseInt(limit));
 
-    const total = await Provider.countDocuments(query);
+    const total = await User.countDocuments(query);
 
     // Format response
     const formattedProviders = providers.map(provider => ({
       _id: provider._id,
       name: `${provider.profile?.firstName || ''} ${provider.profile?.lastName || ''}`.trim(),
-      specialty: provider.specialization?.primary || 'General',
+      specialty: provider.professionalInfo?.specialization || 'General',
       location: `${provider.profile?.address?.city || ''}, ${provider.profile?.address?.state || ''}`.trim(),
-      rating: provider.rating?.average || 0,
-      availableSlots: provider.availability?.isAvailable ? 'Available' : 'Not available'
+      rating: provider.statistics?.rating || 0,
+      availableSlots: provider.availability?.isAcceptingNewPatients ? 'Available' : 'Not available'
     }));
 
     res.status(200).json({

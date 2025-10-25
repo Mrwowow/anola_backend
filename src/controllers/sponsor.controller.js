@@ -32,7 +32,7 @@ exports.updateProfile = async (req, res) => {
   try {
     const { organizationName, organizationType, description, website, contactInfo } = req.body;
 
-    const sponsor = await Sponsor.findById(req.user._id);
+    const sponsor = await User.findById(req.user._id);
 
     if (!sponsor) {
       return res.status(404).json({
