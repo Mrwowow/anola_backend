@@ -962,6 +962,12 @@ router.get('/sponsorships', hasPermission('manageSponsorships'), superAdminContr
 const hmoPlanRoutes = require('./hmoPlan.routes');
 router.use('/', hmoPlanRoutes);
 
+// ==================== HMO Claims Management ====================
+
+// Import and mount HMO Claims admin routes
+const hmoClaimAdminRoutes = require('./hmoClaimAdmin.routes');
+router.use('/hmo-claims', hmoClaimAdminRoutes);
+
 // ==================== Audit & Logs ====================
 
 /**

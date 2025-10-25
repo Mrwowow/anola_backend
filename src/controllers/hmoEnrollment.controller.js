@@ -1,5 +1,6 @@
 const HMOEnrollment = require('../models/hmoEnrollment.model');
 const HMOPlan = require('../models/hmoPlan.model');
+const HMOClaim = require('../models/hmoClaim.model');
 const User = require('../models/user.model');
 
 /**
@@ -581,11 +582,40 @@ exports.getEnrollmentClaims = async (req, res) => {
       });
     }
 
-    // TODO: Fetch claims from claims model when implemented
-    // For now, return utilization data
+    // Fetch claims for this enrollment
+    const claims = await HMOClaim.find({
+      enrollmentId: id,
+      patientId: userId
+    })
+      .populate('claimantId', 'profile.firstName profile.lastName userType businessInfo.name practice.name')
+      .select('claimNumber serviceType serviceDate billing status createdAt')
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    // Calculate summary statistics
+    const claimsSummary = await HMOClaim.aggregate([
+      {
+        $match: {
+          enrollmentId: enrollment._id,
+          patientId: userId
+        }
+      },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalBilled: { $sum: '$billing.totalBilled' },
+          totalCovered: { $sum: '$billing.coveredAmount' },
+          totalPatientPaid: { $sum: '$billing.patientResponsibility.total' }
+        }
+      }
+    ]);
+
     res.status(200).json({
       success: true,
       data: {
+        claims,
+        summary: claimsSummary,
         utilization: enrollment.utilization,
         limits: enrollment.limits
       }

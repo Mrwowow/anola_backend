@@ -229,6 +229,11 @@ app.use('/api/super-admin', require('./routes/superAdmin.routes'));
 // HMO Plans & Enrollments (Public and Authenticated routes)
 app.use('/api', require('./routes/hmoPublic.routes'));
 
+// HMO Claims (Provider, Vendor, Patient routes)
+app.use('/api/hmo-claims', require('./routes/hmoClaim.routes'));
+app.use('/api/providers', require('./routes/hmoProvider.routes'));
+app.use('/api/patients', require('./routes/hmoPatient.routes'));
+
 /**
  * @swagger
  * /:
