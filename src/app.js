@@ -234,6 +234,9 @@ app.use('/api/hmo-claims', require('./routes/hmoClaim.routes'));
 app.use('/api/providers', require('./routes/hmoProvider.routes'));
 app.use('/api/patients', require('./routes/hmoPatient.routes'));
 
+// Payment routes (Stripe & Paystack integration)
+app.use('/api/payments', require('./routes/payment.routes'));
+
 /**
  * @swagger
  * /:
