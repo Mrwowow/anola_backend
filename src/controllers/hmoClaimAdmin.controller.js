@@ -690,4 +690,84 @@ async function processClaimPayment(claim, amount, paymentMethod = 'bank_transfer
   };
 }
 
+/**
+ * Get all appealed claims
+ * GET /api/super-admin/hmo-claims/appeals
+ */
+exports.getAllAppeals = async (req, res) => {
+  try {
+    const {
+      status = 'pending',
+      page = 1,
+      limit = 20,
+      startDate,
+      endDate
+    } = req.query;
+
+    const query = {
+      'appeal.appealDate': { $exists: true }
+    };
+
+    // Filter by appeal status
+    if (status && status !== 'all') {
+      query['appeal.status'] = status;
+    }
+
+    // Date range filter for appeal date
+    if (startDate || endDate) {
+      if (!query['appeal.appealDate']) {
+        query['appeal.appealDate'] = {};
+      }
+      if (startDate) query['appeal.appealDate'].$gte = new Date(startDate);
+      if (endDate) query['appeal.appealDate'].$lte = new Date(endDate);
+    }
+
+    const skip = (page - 1) * limit;
+
+    const appeals = await HMOClaim.find(query)
+      .populate('patientId', 'profile.firstName profile.lastName email healthCardId')
+      .populate('claimantId', 'profile.firstName profile.lastName email userType')
+      .populate('planId', 'name planCode category')
+      .populate('enrollmentId', 'enrollmentNumber membershipCardNumber')
+      .populate('reviewedBy', 'profile.firstName profile.lastName')
+      .populate('appeal.reviewedBy', 'profile.firstName profile.lastName')
+      .sort({ 'appeal.appealDate': -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await HMOClaim.countDocuments(query);
+
+    // Get appeal statistics
+    const appealStats = await HMOClaim.aggregate([
+      { $match: { 'appeal.appealDate': { $exists: true } } },
+      {
+        $group: {
+          _id: '$appeal.status',
+          count: { $sum: 1 },
+          totalBilled: { $sum: '$billing.totalBilled' }
+        }
+      }
+    ]);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: appeals,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      },
+      statistics: appealStats
+    });
+  } catch (error) {
+    console.error('Get appeals error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to fetch appeals',
+      error: error.message
+    });
+  }
+};
+
 module.exports = exports;

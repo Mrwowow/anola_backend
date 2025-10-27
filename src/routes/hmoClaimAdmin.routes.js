@@ -59,6 +59,65 @@ router.get('/pending', hmoClaimAdminController.getPendingClaims);
 
 /**
  * @swagger
+ * /api/super-admin/hmo-claims/appeals:
+ *   get:
+ *     summary: Get all appealed claims
+ *     tags: [SuperAdmin - HMO Claims]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [pending, approved, rejected, all]
+ *           default: pending
+ *         description: Filter by appeal status
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter appeals from this date
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter appeals until this date
+ *     responses:
+ *       200:
+ *         description: List of appealed claims with statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 pagination:
+ *                   type: object
+ *                 statistics:
+ *                   type: array
+ */
+router.get('/appeals', hmoClaimAdminController.getAllAppeals);
+
+/**
+ * @swagger
  * /api/super-admin/hmo-claims/analytics:
  *   get:
  *     summary: Get claims analytics and statistics
