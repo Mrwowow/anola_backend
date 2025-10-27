@@ -26,7 +26,8 @@ const hmoEnrollmentSchema = new mongoose.Schema({
   enrollmentNumber: {
     type: String,
     unique: true,
-    required: true
+    sparse: true
+    // Auto-generated in pre-save hook
   },
   membershipCardNumber: {
     type: String,
@@ -73,12 +74,12 @@ const hmoEnrollmentSchema = new mongoose.Schema({
 
   // Coverage Details
   coverageStartDate: {
-    type: Date,
-    required: true
+    type: Date
+    // Auto-calculated in calculateCoverageDates method
   },
   coverageEndDate: {
-    type: Date,
-    required: true
+    type: Date
+    // Auto-calculated in calculateCoverageDates method
   },
   renewalDate: Date,
 
