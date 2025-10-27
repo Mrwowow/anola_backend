@@ -132,6 +132,33 @@ exports.getPendingClaims = async (req, res) => {
 };
 
 /**
+ * Get count of pending claims
+ * GET /api/super-admin/hmo-claims/pending/count
+ */
+exports.getPendingClaimsCount = async (req, res) => {
+  try {
+    const count = await HMOClaim.countDocuments({
+      status: { $in: ['submitted', 'under_review'] }
+    });
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: {
+        count,
+        timestamp: new Date()
+      }
+    });
+  } catch (error) {
+    console.error('Get pending claims count error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to get pending claims count',
+      error: error.message
+    });
+  }
+};
+
+/**
  * Assign claim for review
  * POST /api/super-admin/hmo-claims/:id/assign
  */

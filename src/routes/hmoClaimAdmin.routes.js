@@ -45,6 +45,36 @@ router.get('/', hmoClaimAdminController.getAllClaims);
 
 /**
  * @swagger
+ * /api/super-admin/hmo-claims/pending/count:
+ *   get:
+ *     summary: Get count of pending claims
+ *     tags: [SuperAdmin - HMO Claims]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Count of pending claims
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     count:
+ *                       type: integer
+ *                       example: 15
+ *                     timestamp:
+ *                       type: string
+ *                       format: date-time
+ */
+router.get('/pending/count', hmoClaimAdminController.getPendingClaimsCount);
+
+/**
+ * @swagger
  * /api/super-admin/hmo-claims/pending:
  *   get:
  *     summary: Get pending claims for review
