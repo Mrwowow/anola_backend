@@ -628,6 +628,7 @@ router.get('/:providerId/appointments', providerController.getAppointments);
 
 // Protected routes (authentication required)
 router.get('/:providerId/analytics', authenticate, providerController.getAnalytics);
+router.get('/:providerId/earnings/summary', authenticate, providerController.getEarningsSummary);
 router.put('/:providerId/profile', authenticate, providerController.updateProfile);
 router.post('/:providerId/avatar', authenticate, upload.single('file'), providerController.uploadAvatar);
 router.post('/:providerId/services', authenticate, providerController.addService);

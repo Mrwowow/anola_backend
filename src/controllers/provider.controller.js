@@ -895,3 +895,191 @@ exports.getAnalytics = async (req, res) => {
     });
   }
 };
+
+/**
+ * Get provider earnings summary
+ * GET /api/providers/:providerId/earnings/summary
+ */
+exports.getEarningsSummary = async (req, res) => {
+  try {
+    const { providerId } = req.params;
+    const { period = 'month' } = req.query;
+
+    // Verify provider exists
+    const provider = await User.findOne({
+      _id: providerId,
+      userType: 'provider'
+    });
+
+    if (!provider) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'Provider not found'
+      });
+    }
+
+    // Check authorization - providers can only view their own earnings
+    if (req.user && req.user._id.toString() !== providerId && req.user.userType !== 'super_admin') {
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        success: false,
+        message: 'Not authorized to view these earnings'
+      });
+    }
+
+    // Calculate date range
+    const endDate = new Date();
+    let startDate = new Date();
+
+    switch (period) {
+      case 'day':
+        startDate.setDate(startDate.getDate() - 1);
+        break;
+      case 'week':
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+      case 'month':
+        startDate.setMonth(startDate.getMonth() - 1);
+        break;
+      case 'year':
+        startDate.setFullYear(startDate.getFullYear() - 1);
+        break;
+      case 'all':
+        startDate = new Date(0); // Beginning of time
+        break;
+      default:
+        startDate.setMonth(startDate.getMonth() - 1);
+    }
+
+    // Get Transaction model
+    const Transaction = require('../models/transaction.model');
+    const Wallet = require('../models/wallet.model');
+
+    // Get provider wallet
+    const wallet = await Wallet.findOne({ userId: providerId });
+    const currentBalance = wallet ? wallet.balance.available : 0;
+
+    // Get all earnings transactions
+    const earningsTransactions = await Transaction.aggregate([
+      {
+        $match: {
+          'to.userId': provider._id,
+          status: 'completed',
+          createdAt: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalEarnings: { $sum: '$amount.value' },
+          transactionCount: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const periodEarnings = earningsTransactions.length > 0 ? earningsTransactions[0].totalEarnings : 0;
+    const transactionCount = earningsTransactions.length > 0 ? earningsTransactions[0].transactionCount : 0;
+
+    // Get earnings by category
+    const earningsByCategory = await Transaction.aggregate([
+      {
+        $match: {
+          'to.userId': provider._id,
+          status: 'completed',
+          createdAt: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: '$category',
+          amount: { $sum: '$amount.value' },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { amount: -1 }
+      }
+    ]);
+
+    // Get pending earnings (transactions not yet completed)
+    const pendingEarnings = await Transaction.aggregate([
+      {
+        $match: {
+          'to.userId': provider._id,
+          status: 'pending'
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          amount: { $sum: '$amount.value' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const pending = pendingEarnings.length > 0 ? pendingEarnings[0] : { amount: 0, count: 0 };
+
+    // Get lifetime earnings
+    const lifetimeEarnings = await Transaction.aggregate([
+      {
+        $match: {
+          'to.userId': provider._id,
+          status: 'completed'
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$amount.value' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const lifetime = lifetimeEarnings.length > 0 ? lifetimeEarnings[0] : { total: 0, count: 0 };
+
+    // Calculate daily average for the period
+    const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+    const dailyAverage = daysDiff > 0 ? periodEarnings / daysDiff : 0;
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: {
+        period,
+        dateRange: {
+          start: startDate,
+          end: endDate
+        },
+        currentBalance: {
+          available: currentBalance,
+          currency: 'USD'
+        },
+        earnings: {
+          period: periodEarnings,
+          lifetime: lifetime.total,
+          pending: pending.amount,
+          dailyAverage: Math.round(dailyAverage * 100) / 100
+        },
+        transactions: {
+          period: transactionCount,
+          lifetime: lifetime.count,
+          pending: pending.count
+        },
+        breakdown: earningsByCategory.map(item => ({
+          category: item._id || 'other',
+          amount: item.amount,
+          count: item.count,
+          percentage: periodEarnings > 0 ? Math.round((item.amount / periodEarnings) * 100) : 0
+        }))
+      }
+    });
+
+  } catch (error) {
+    console.error('Get earnings summary error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to get earnings summary',
+      error: error.message
+    });
+  }
+};
