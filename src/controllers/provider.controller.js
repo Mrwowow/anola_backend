@@ -1083,3 +1083,120 @@ exports.getEarningsSummary = async (req, res) => {
     });
   }
 };
+
+/**
+ * Get provider earnings transactions
+ * GET /api/providers/:providerId/earnings/transactions
+ */
+exports.getEarningsTransactions = async (req, res) => {
+  try {
+    const { providerId } = req.params;
+    const {
+      page = 1,
+      limit = 10,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      category,
+      status,
+      startDate,
+      endDate
+    } = req.query;
+
+    // Verify provider exists
+    const provider = await User.findOne({
+      _id: providerId,
+      userType: 'provider'
+    });
+
+    if (!provider) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'Provider not found'
+      });
+    }
+
+    // Check authorization - providers can only view their own transactions
+    if (req.user && req.user._id.toString() !== providerId && req.user.userType !== 'super_admin') {
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        success: false,
+        message: 'Not authorized to view these transactions'
+      });
+    }
+
+    // Get Transaction model
+    const Transaction = require('../models/transaction.model');
+
+    // Build query
+    const query = {
+      'to.userId': provider._id
+    };
+
+    // Add filters
+    if (category) {
+      query.category = category;
+    }
+
+    if (status) {
+      query.status = status;
+    }
+
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) query.createdAt.$lte = new Date(endDate);
+    }
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    // Get transactions
+    const transactions = await Transaction.find(query)
+      .populate('from.userId', 'profile.firstName profile.lastName email userType')
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    // Get total count
+    const total = await Transaction.countDocuments(query);
+
+    // Calculate summary for filtered results
+    const summary = await Transaction.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: null,
+          totalAmount: { $sum: '$amount.value' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const summaryData = summary.length > 0 ? summary[0] : { totalAmount: 0, count: 0 };
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: transactions,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      },
+      summary: {
+        totalAmount: summaryData.totalAmount,
+        totalTransactions: summaryData.count
+      }
+    });
+
+  } catch (error) {
+    console.error('Get earnings transactions error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to get earnings transactions',
+      error: error.message
+    });
+  }
+};
