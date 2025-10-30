@@ -1200,3 +1200,133 @@ exports.getEarningsTransactions = async (req, res) => {
     });
   }
 };
+
+/**
+ * Get provider earnings payouts
+ * GET /api/providers/:providerId/earnings/payouts
+ */
+exports.getEarningsPayouts = async (req, res) => {
+  try {
+    const { providerId } = req.params;
+    const {
+      page = 1,
+      limit = 5,
+      status,
+      startDate,
+      endDate
+    } = req.query;
+
+    // Verify provider exists
+    const provider = await User.findOne({
+      _id: providerId,
+      userType: 'provider'
+    });
+
+    if (!provider) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'Provider not found'
+      });
+    }
+
+    // Check authorization - providers can only view their own payouts
+    if (req.user && req.user._id.toString() !== providerId && req.user.userType !== 'super_admin') {
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        success: false,
+        message: 'Not authorized to view these payouts'
+      });
+    }
+
+    // Get Transaction model
+    const Transaction = require('../models/transaction.model');
+
+    // Build query for withdrawal/payout transactions
+    const query = {
+      'from.userId': provider._id,
+      type: 'debit',
+      category: { $in: ['withdrawal', 'payout', 'bank_transfer'] }
+    };
+
+    // Add filters
+    if (status) {
+      query.status = status;
+    }
+
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) query.createdAt.$lte = new Date(endDate);
+    }
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get payouts
+    const payouts = await Transaction.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    // Get total count
+    const total = await Transaction.countDocuments(query);
+
+    // Calculate summary statistics
+    const summary = await Transaction.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$amount.value' }
+        }
+      }
+    ]);
+
+    // Calculate totals by status
+    const byStatus = {
+      completed: { count: 0, amount: 0 },
+      pending: { count: 0, amount: 0 },
+      failed: { count: 0, amount: 0 }
+    };
+
+    summary.forEach(item => {
+      if (byStatus[item._id]) {
+        byStatus[item._id].count = item.count;
+        byStatus[item._id].amount = item.totalAmount;
+      }
+    });
+
+    // Get pending payout amount
+    const pendingAmount = byStatus.pending.amount;
+
+    // Get total withdrawn (completed payouts)
+    const totalWithdrawn = byStatus.completed.amount;
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: payouts,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      },
+      summary: {
+        totalWithdrawn,
+        pendingWithdrawals: pendingAmount,
+        completedPayouts: byStatus.completed.count,
+        pendingPayouts: byStatus.pending.count,
+        failedPayouts: byStatus.failed.count
+      }
+    });
+
+  } catch (error) {
+    console.error('Get earnings payouts error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to get earnings payouts',
+      error: error.message
+    });
+  }
+};

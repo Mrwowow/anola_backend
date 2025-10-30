@@ -630,6 +630,7 @@ router.get('/:providerId/appointments', providerController.getAppointments);
 router.get('/:providerId/analytics', authenticate, providerController.getAnalytics);
 router.get('/:providerId/earnings/summary', authenticate, providerController.getEarningsSummary);
 router.get('/:providerId/earnings/transactions', authenticate, providerController.getEarningsTransactions);
+router.get('/:providerId/earnings/payouts', authenticate, providerController.getEarningsPayouts);
 router.put('/:providerId/profile', authenticate, providerController.updateProfile);
 router.post('/:providerId/avatar', authenticate, upload.single('file'), providerController.uploadAvatar);
 router.post('/:providerId/services', authenticate, providerController.addService);
