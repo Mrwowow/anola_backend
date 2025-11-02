@@ -466,19 +466,69 @@ exports.getSchedule = exports.getAppointments;
 exports.getPatients = async (req, res) => {
   try {
     const providerId = req.params.providerId || req.user?._id;
+    const { source = 'all' } = req.query; // 'all', 'registered', 'appointments'
 
-    // Get unique patients from appointments
-    const appointments = await Appointment.find({ provider: providerId })
-      .distinct('patient');
+    let patientIds = [];
 
+    // Get patients based on source filter
+    if (source === 'all' || source === 'appointments') {
+      // Get unique patients from appointments
+      const appointmentPatients = await Appointment.find({ provider: providerId })
+        .distinct('patient');
+      patientIds = [...appointmentPatients];
+    }
+
+    // Build query for registered patients
+    const registeredQuery = {
+      userType: 'patient',
+      'metadata.addedById': providerId
+    };
+
+    if (source === 'all' || source === 'registered') {
+      // Get patients registered by this provider
+      const registeredPatients = await User.find(registeredQuery)
+        .distinct('_id');
+
+      // Merge with appointment patients (remove duplicates)
+      patientIds = [...new Set([...patientIds, ...registeredPatients.map(id => id.toString())])];
+    }
+
+    // Fetch patient details
     const patients = await User.find({
-      _id: { $in: appointments }
-    }).select('profile email phone healthCardId medicalHistory');
+      _id: { $in: patientIds }
+    })
+      .select('profile email phone healthCardId medicalHistory metadata.addedBy metadata.addedById metadata.addedAt createdAt')
+      .lean();
+
+    // Add source information to each patient
+    const appointmentPatientIds = source !== 'registered'
+      ? (await Appointment.find({ provider: providerId }).distinct('patient')).map(id => id.toString())
+      : [];
+
+    const enrichedPatients = patients.map(patient => ({
+      ...patient,
+      registrationSource: {
+        registeredByProvider: patient.metadata?.addedById?.toString() === providerId.toString(),
+        hasAppointments: appointmentPatientIds.includes(patient._id.toString()),
+        registeredAt: patient.metadata?.addedAt || patient.createdAt
+      }
+    }));
+
+    // Get statistics
+    const stats = {
+      total: enrichedPatients.length,
+      registeredByProvider: enrichedPatients.filter(p => p.registrationSource.registeredByProvider).length,
+      withAppointments: enrichedPatients.filter(p => p.registrationSource.hasAppointments).length,
+      bothSources: enrichedPatients.filter(p =>
+        p.registrationSource.registeredByProvider && p.registrationSource.hasAppointments
+      ).length
+    };
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
-      patients,
-      totalPatients: patients.length
+      patients: enrichedPatients,
+      totalPatients: enrichedPatients.length,
+      stats
     });
   } catch (error) {
     console.error('Get provider patients error:', error);
