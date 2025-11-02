@@ -229,15 +229,14 @@ class NotificationService {
       }
 
       // Mark notification as complete
-      await notification.markAsComplete();
-      await notification.reload();
+      const updatedNotification = await notification.markAsComplete();
 
       return {
         success: true,
-        notificationId: notification._id,
+        notificationId: updatedNotification._id,
         totalRecipients: recipients.length,
-        successCount: notification.successCount,
-        failureCount: notification.failureCount,
+        successCount: updatedNotification.successCount,
+        failureCount: updatedNotification.failureCount,
         results
       };
     } catch (error) {
