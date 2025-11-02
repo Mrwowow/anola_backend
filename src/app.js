@@ -237,6 +237,9 @@ app.use('/api/patients', require('./routes/hmoPatient.routes'));
 // Payment routes (Stripe & Paystack integration)
 app.use('/api/payments', require('./routes/payment.routes'));
 
+// Messaging and Notification routes
+app.use('/api/messages', require('./routes/messaging.routes'));
+
 /**
  * @swagger
  * /:
