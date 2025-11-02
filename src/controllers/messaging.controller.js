@@ -1,7 +1,17 @@
 const notificationService = require('../services/notification.service');
 const Notification = require('../models/notification.model');
 const User = require('../models/user.model');
-const { HTTP_STATUS } = require('../constants');
+
+const HTTP_STATUS = {
+  OK: 200,
+  CREATED: 201,
+  BAD_REQUEST: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  CONFLICT: 409,
+  INTERNAL_SERVER_ERROR: 500
+};
 
 /**
  * Send individual notification
