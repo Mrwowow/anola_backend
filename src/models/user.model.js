@@ -366,7 +366,14 @@ const userSchema = new mongoose.Schema({
     device: String
   }],
   deactivatedAt: Date,
-  deactivationReason: String
+  deactivationReason: String,
+
+  // Registration tracking (for patients added by providers/vendors/sponsors)
+  metadata: {
+    addedBy: String, // userType of who added this patient
+    addedById: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // ID of provider/vendor/sponsor who added patient
+    addedAt: Date // When patient was added
+  }
 }, {
   timestamps: true,
   discriminatorKey: 'userType',
